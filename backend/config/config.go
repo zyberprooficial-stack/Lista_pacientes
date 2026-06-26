@@ -13,6 +13,7 @@ type Config struct {
 	MaxDBConnections    int
 	MaxIdleConnections  int
 	RateLimitPerMinute  int
+	GoogleMapsAPIKey    string
 }
 
 // Load carga la configuración desde variables de entorno con valores por defecto
