@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="description" content="Sistema de consulta de pacientes afectados por terremoto en Venezuela">
+    <title>Sistema de Emergencia - Consulta de Pacientes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=2.0">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🏥 Sistema de Emergencia Médica</h1>
+            <p class="subtitle">Registro de Pacientes - Terremoto Venezuela</p>
+        </header>
+
+        <!-- Acciones Rápidas -->
+        <div class="action-cards">
+            <button id="showSearchBtn" class="action-card active">
+                <span class="action-icon">🔍</span>
+                <div>
+                    <h3>Buscar Pacientes</h3>
+                    <p>Consulta el registro de afectados</p>
+                </div>
+            </button>
+            <button id="showRegisterBtn" class="action-card">
+                <span class="action-icon">➕</span>
+                <div>
+                    <h3>Registrar Paciente</h3>
+                    <p>Agregar nuevo registro público</p>
+                </div>
+            </button>
+        </div>
+
+        <!-- Búsqueda -->
+        <section id="searchSection" class="search-section">
+            <form id="searchForm" class="search-form">
+                <div class="search-grid">
+                    <div class="input-group">
+                        <label for="searchNombre">Nombre</label>
+                        <input 
+                            type="text" 
+                            id="searchNombre" 
+                            placeholder="Ej: Juan Pérez"
+                            autocomplete="off"
+                        >
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="searchCedula">Cédula</label>
+                        <input 
+                            type="text" 
+                            id="searchCedula" 
+                            placeholder="Ej: V12345678"
+                            autocomplete="off"
+                        >
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="searchUbicacion">Ubicación</label>
+                        <input 
+                            type="text" 
+                            id="searchUbicacion" 
+                            placeholder="Buscar hospital, ciudad..."
+                            autocomplete="off"
+                        >
+                        <small class="input-hint">🏥 Autocompletado inteligente</small>
+                    </div>
+                </div>
+
+                <!-- Filtros Avanzados (Colapsable) -->
+                <div class="advanced-filters">
+                    <button type="button" id="toggleFiltersBtn" class="toggle-filters-btn">
+                        <span id="filterIcon">▼</span> Filtros Avanzados
+                    </button>
+                    <div id="advancedFiltersContent" class="advanced-filters-content" style="display: none;">
+                        <div class="search-grid">
+                            <div class="input-group">
+                                <label for="searchEstadoGeo">Estado</label>
+                                <select id="searchEstadoGeo" class="select-input">
+                                    <option value="">Todos los estados</option>
+                                </select>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="searchMunicipio">Municipio</label>
+                                <select id="searchMunicipio" class="select-input" disabled>
+                                    <option value="">Primero seleccione un estado</option>
+                                </select>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="searchParroquia">Parroquia</label>
+                                <select id="searchParroquia" class="select-input" disabled>
+                                    <option value="">Primero seleccione un municipio</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="search-grid">
+                            <div class="input-group">
+                                <label for="searchEstado">Estado de Salud</label>
+                                <select id="searchEstado" class="select-input">
+                                    <option value="">Todos los estados</option>
+                                    <option value="Estable">Estable</option>
+                                    <option value="Critico">Crítico</option>
+                                    <option value="Fallecido">Fallecido</option>
+                                    <option value="Desconocido">Desconocido</option>
+                                </select>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="searchFechaDesde">Fecha Desde</label>
+                                <input 
+                                    type="date" 
+                                    id="searchFechaDesde"
+                                    class="date-input"
+                                >
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="searchFechaHasta">Fecha Hasta</label>
+                                <input 
+                                    type="date" 
+                                    id="searchFechaHasta"
+                                    class="date-input"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">🔍 Buscar</button>
+                    <button type="button" id="clearBtn" class="btn btn-secondary">✖ Limpiar</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Registro de Paciente -->
+        <section id="registerSection" class="register-section" style="display: none;">
+            <form id="registerForm" class="register-form">
+                <h2 class="form-title">📝 Registro Público de Paciente</h2>
+                <p class="form-subtitle">Complete la información del paciente afectado</p>
+
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="regNombre">Nombre Completo <span class="required">*</span></label>
+                        <input 
+                            type="text" 
+                            id="regNombre" 
+                            placeholder="Nombre y apellido completo"
+                            required
+                            maxlength="200"
+                        >
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="regCedula">Cédula</label>
+                        <input 
+                            type="text" 
+                            id="regCedula" 
+                            placeholder="V12345678 o E12345678 (opcional)"
+                            pattern="[VE][0-9]{6,8}"
+                            maxlength="20"
+                        >
+                        <small class="input-hint">Formato: V o E seguido de 6-8 dígitos (opcional)</small>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="regTelefono">Teléfono de Contacto</label>
+                        <input 
+                            type="tel" 
+                            id="regTelefono" 
+                            placeholder="0414-1234567 (opcional)"
+                            maxlength="20"
+                        >
+                        <small class="input-hint">Número de contacto del paciente o familiar</small>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="regEdad">Edad</label>
+                        <input 
+                            type="number" 
+                            id="regEdad" 
+                            placeholder="Edad en años (opcional)"
+                            min="0"
+                            max="150"
+                        >
+                        <small class="input-hint">Edad del paciente (0-150 años)</small>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="regEstado">Estado <span class="required">*</span></label>
+                        <select id="regEstado" class="select-input" required>
+                            <option value="">Seleccione un estado...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="regMunicipio">Municipio <span class="required">*</span></label>
+                        <select id="regMunicipio" class="select-input" required disabled>
+                            <option value="">Primero seleccione un estado</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="regParroquia">Parroquia <span class="required">*</span></label>
+                        <select id="regParroquia" class="select-input" required disabled>
+                            <option value="">Primero seleccione un municipio</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group full-width">
+                        <label for="regUbicacion">Ubicación Específica <span class="required">*</span></label>
+                        <input 
+                            type="text" 
+                            id="regUbicacion" 
+                            placeholder="Ej: caracas, maracaibo, valencia..."
+                            required
+                            maxlength="300"
+                            autocomplete="off"
+                        >
+                        <small class="input-hint">🏥 Escriba el nombre de una ciudad para ver hospitales y clínicas disponibles</small>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="regEstadoSalud">Estado de Salud <span class="required">*</span></label>
+                        <select id="regEstadoSalud" class="select-input" required>
+                            <option value="">Seleccione...</option>
+                            <option value="Estable">Estable</option>
+                            <option value="Critico">Crítico</option>
+                            <option value="Fallecido">Fallecido</option>
+                            <option value="Desconocido">Desconocido</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary btn-lg">💾 Registrar Paciente</button>
+                    <button type="button" id="cancelRegisterBtn" class="btn btn-secondary">✖ Cancelar</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Mensaje de éxito -->
+        <div id="successMessage" class="success-message" style="display: none;"></div>
+
+        <!-- Estado de carga -->
+        <div id="loadingIndicator" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Cargando resultados...</p>
+        </div>
+
+        <!-- Mensajes de error -->
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <!-- Información de resultados -->
+        <div id="resultsInfo" class="results-info" style="display: none;">
+            <p>📋 <span id="resultsRange">Mostrando 0 de 0</span> registros</p>
+            <p id="resultsHint" class="results-hint" style="display: none;">
+                Hay muchos registros. Use nombre, cédula o filtros avanzados para encontrar pacientes más rápido.
+            </p>
+        </div>
+
+        <!-- Tabla de resultados -->
+        <section class="results-section">
+            <div class="table-container">
+                <table id="resultsTable" class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre Completo</th>
+                            <th>Cédula</th>
+                            <th>Edad</th>
+                            <th>Teléfono</th>
+                            <th>Estado</th>
+                            <th>Municipio</th>
+                            <th>Parroquia</th>
+                            <th>Ubicación Actual</th>
+                            <th>Estado de Salud</th>
+                            <th>Fecha de Registro</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <tr>
+                            <td colspan="10" class="no-results">
+                                Realice una búsqueda o presione "Buscar" para ver todos los pacientes
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Paginación -->
+        <div id="pagination" class="pagination" style="display: none;">
+            <div class="pagination-nav">
+                <button id="prevBtn" class="btn btn-page" disabled>← Anterior</button>
+                <span id="pageInfo" class="page-info">Página 1 de 1</span>
+                <button id="nextBtn" class="btn btn-page" disabled>Siguiente →</button>
+            </div>
+            <div class="pagination-options">
+                <label for="pageSize">Mostrar</label>
+                <select id="pageSize" class="select-input page-size-select">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                </select>
+                <span>por página</span>
+            </div>
+            <button id="loadMoreBtn" class="btn btn-secondary load-more-btn" style="display: none;">
+                ↓ Cargar más resultados
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Sistema público de consulta en tiempo real</p>
+            <p class="footer-note">🚨 EMERGENCIA 911 - Atención médica inmediata</p>
+        </footer>
+    </div>
+
+    <!-- OpenStreetMap Autocomplete (GRATIS, sin API key) -->
+    <script src="openstreetmap-autocomplete.js?v=2.0"></script>
+    <script src="config.js?v=2.0"></script>
+    <script src="app.js?v=2.0"></script>
+
+
+
+</body>
+</html>
