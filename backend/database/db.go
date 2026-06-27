@@ -286,6 +286,28 @@ func CreatePaciente(ctx context.Context, input *models.PacienteInput) (*models.P
 		fotoValue = input.Foto
 	}
 	
+	// Convertir IDs geográficos <= 0 a NULL para la base de datos
+	var estadoIDValue interface{}
+	if input.EstadoID <= 0 {
+		estadoIDValue = nil
+	} else {
+		estadoIDValue = input.EstadoID
+	}
+
+	var municipioIDValue interface{}
+	if input.MunicipioID <= 0 {
+		municipioIDValue = nil
+	} else {
+		municipioIDValue = input.MunicipioID
+	}
+
+	var parroquiaIDValue interface{}
+	if input.ParroquiaID <= 0 {
+		parroquiaIDValue = nil
+	} else {
+		parroquiaIDValue = input.ParroquiaID
+	}
+	
 	err := db.QueryRowContext(
 		ctx,
 		query,
@@ -296,9 +318,9 @@ func CreatePaciente(ctx context.Context, input *models.PacienteInput) (*models.P
 		input.UbicacionActual,
 		input.EstadoSalud,
 		fotoValue,
-		input.EstadoID,
-		input.MunicipioID,
-		input.ParroquiaID,
+		estadoIDValue,
+		municipioIDValue,
+		parroquiaIDValue,
 	).Scan(
 		&p.ID, 
 		&p.NombreCompleto, 
@@ -315,9 +337,14 @@ func CreatePaciente(ctx context.Context, input *models.PacienteInput) (*models.P
 	)
 
 	if err != nil {
-		// Manejo especial para cédula duplicada
 		if strings.Contains(err.Error(), "duplicate key") {
-			return nil, fmt.Errorf("la cédula %s ya existe en el sistema", input.Cedula)
+			if strings.Contains(err.Error(), "uq_nombre_completo") {
+				return nil, fmt.Errorf("ya existe un paciente registrado con el nombre completo '%s'", input.NombreCompleto)
+			}
+			if strings.Contains(err.Error(), "idx_pacientes_cedula") || strings.Contains(err.Error(), "cedula_unica") {
+				return nil, fmt.Errorf("la cédula %s ya existe en el sistema", input.Cedula)
+			}
+			return nil, fmt.Errorf("los datos enviados contienen un valor duplicado que ya existe en el sistema (error: %w)", err)
 		}
 		return nil, fmt.Errorf("error creando paciente: %w", err)
 	}
@@ -397,6 +424,28 @@ func UpdatePaciente(ctx context.Context, id int, input *models.PacienteInput) (*
 		fotoValue = "KEEP"
 	}
 	
+	// Convertir IDs geográficos <= 0 a NULL para la base de datos
+	var estadoIDValue interface{}
+	if input.EstadoID <= 0 {
+		estadoIDValue = nil
+	} else {
+		estadoIDValue = input.EstadoID
+	}
+
+	var municipioIDValue interface{}
+	if input.MunicipioID <= 0 {
+		municipioIDValue = nil
+	} else {
+		municipioIDValue = input.MunicipioID
+	}
+
+	var parroquiaIDValue interface{}
+	if input.ParroquiaID <= 0 {
+		parroquiaIDValue = nil
+	} else {
+		parroquiaIDValue = input.ParroquiaID
+	}
+	
 	err := db.QueryRowContext(
 		ctx,
 		query,
@@ -407,9 +456,9 @@ func UpdatePaciente(ctx context.Context, id int, input *models.PacienteInput) (*
 		input.UbicacionActual,
 		input.EstadoSalud,
 		fotoValue,
-		input.EstadoID,
-		input.MunicipioID,
-		input.ParroquiaID,
+		estadoIDValue,
+		municipioIDValue,
+		parroquiaIDValue,
 		id,
 	).Scan(
 		&p.ID, 
@@ -431,7 +480,13 @@ func UpdatePaciente(ctx context.Context, id int, input *models.PacienteInput) (*
 
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key") {
-			return nil, fmt.Errorf("la cédula %s ya existe en el sistema", input.Cedula)
+			if strings.Contains(err.Error(), "uq_nombre_completo") {
+				return nil, fmt.Errorf("ya existe un paciente registrado con el nombre completo '%s'", input.NombreCompleto)
+			}
+			if strings.Contains(err.Error(), "idx_pacientes_cedula") || strings.Contains(err.Error(), "cedula_unica") {
+				return nil, fmt.Errorf("la cédula %s ya existe en el sistema", input.Cedula)
+			}
+			return nil, fmt.Errorf("los datos enviados contienen un valor duplicado que ya existe en el sistema (error: %w)", err)
 		}
 		return nil, fmt.Errorf("error actualizando paciente: %w", err)
 	}
