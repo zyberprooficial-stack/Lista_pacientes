@@ -527,7 +527,7 @@ body {
 .button-group {
     display: flex;
     align-items: center;
-    gap: 35px;
+    gap: 16px;
     flex-wrap: wrap;
 }
 
@@ -650,6 +650,69 @@ body {
     margin-top: 4px;
 }
 
+/* Contenedor de Foto Upload */
+.foto-upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.foto-preview {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    border: 2px dashed var(--slate-200);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.foto-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.foto-remove-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.foto-remove-btn:hover {
+    background: rgb(220, 38, 38);
+    transform: scale(1.1);
+}
+
+.foto-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.foto-btn {
+    flex: 1;
+    height: 40px;
+}
+
+.foto-info {
+    font-size: 13px;
+    color: var(--slate-600);
+    padding: 8px 12px;
+    background: var(--slate-50);
+    border-radius: var(--radius-sm);
+}
+
 /* Tabla de Resultados */
 .table-container {
     width: 100%;
@@ -701,7 +764,33 @@ body {
     text-align: center;
 }
 
-/* Foto */
+/* Foto - estilos para imagen */
+.patient-photo {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+    border: 1px solid var(--slate-200);
+}
+
+.patient-photo:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
+}
+
+.patient-photo-placeholder {
+    width: 50px;
+    height: 50px;
+    background: var(--slate-100);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--slate-400);
+    font-size: 24px;
+}
 .results-table th:nth-child(2),
 .results-table td:nth-child(2) {
     width: 180px;
@@ -1104,6 +1193,145 @@ body {
     padding-top: 24px;
 }
 
+/* Modal de Cámara */
+#cameraModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+#cameraModal.active {
+    display: flex;
+}
+
+.camera-container {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    background: var(--slate-900);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+#cameraVideo {
+    width: 100%;
+    max-width: 640px;
+    height: auto;
+    border-radius: var(--radius-md);
+}
+
+.btn-switch-camera {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    z-index: 10;
+}
+
+.btn-switch-camera:hover {
+    background: white;
+    transform: scale(1.1);
+}
+
+.camera-controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.camera-controls .btn {
+    min-width: 140px;
+}
+
+/* Modal para ver foto */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10001;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.photo-modal-content {
+    background: white;
+    border-radius: var(--radius-lg);
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+    position: relative;
+    padding: 32px;
+}
+
+.modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    background: var(--slate-100);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+    color: var(--slate-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+    background: var(--slate-200);
+    color: var(--slate-900);
+}
+
+.photo-modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--slate-900);
+    margin-bottom: 20px;
+}
+
+.photo-modal-image-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.photo-modal-image-container img {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: var(--radius-md);
+}
+
 /* Media Queries para Responsive */
 @media (max-width: 1024px) {
     .stats-grid {
@@ -1123,11 +1351,17 @@ body {
     .header-actions {
         width: 100%;
         gap: 10px;
+        flex-direction: column;
     }
 
     .btn-action-tab {
-        flex: 1;
+        width: 100%;
         justify-content: center;
+        height: 44px;
+    }
+
+    .btn-action-tab span {
+        display: inline;
     }
 
     .search-section {
@@ -1141,6 +1375,37 @@ body {
 
     .register-section {
         padding: 24px;
+    }
+
+    /* Ajuste de botones en formulario móvil */
+    .button-group {
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
+    }
+
+    .button-group .btn {
+        width: 100%;
+        height: 48px;
+        justify-content: center;
+    }
+
+    /* Botones de foto en móvil */
+    .foto-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+    }
+
+    .foto-btn {
+        width: 100%;
+        height: 48px;
+        justify-content: center;
+    }
+
+    .foto-upload-container {
+        width: 100%;
     }
 
     .results-table thead {
