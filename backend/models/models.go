@@ -121,15 +121,15 @@ func (p *PacienteInput) Validate() []string {
 		errors = append(errors, "estado_salud debe ser: Estable, Critico, Fallecido o Desconocido")
 	}
 
-	// Validar campos geográficos (obligatorios)
-	if p.EstadoID <= 0 {
-		errors = append(errors, "estado_id es requerido y debe ser mayor a 0")
+	// Validar campos geográficos (opcionales, pero si se proporcionan deben ser válidos)
+	if p.EstadoID < 0 {
+		errors = append(errors, "estado_id debe ser mayor a 0")
 	}
-	if p.MunicipioID <= 0 {
-		errors = append(errors, "municipio_id es requerido y debe ser mayor a 0")
+	if p.MunicipioID < 0 {
+		errors = append(errors, "municipio_id debe ser mayor a 0")
 	}
-	if p.ParroquiaID <= 0 {
-		errors = append(errors, "parroquia_id es requerido y debe ser mayor a 0")
+	if p.ParroquiaID < 0 {
+		errors = append(errors, "parroquia_id debe ser mayor a 0")
 	}
 
 	return errors

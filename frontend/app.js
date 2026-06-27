@@ -504,9 +504,9 @@ async function handleRegister(e) {
         ubicacion_actual: elements.regUbicacion.value.trim(),
         estado_salud: elements.regEstadoSalud.value,
         foto: fotoBase64,
-        estado_id: parseInt(elements.regEstadoGeo.value),
-        municipio_id: parseInt(elements.regMunicipio.value),
-        parroquia_id: parseInt(elements.regParroquia.value)
+        estado_id: parseInt(elements.regEstadoGeo.value) || 0,
+        municipio_id: parseInt(elements.regMunicipio.value) || 0,
+        parroquia_id: parseInt(elements.regParroquia.value) || 0
     };
     
     // Validación básica
@@ -1850,9 +1850,9 @@ async function handleUpdate(e) {
         ubicacion_actual: elements.regUbicacion.value.trim(),
         estado_salud: elements.regEstadoSalud.value,
         foto: fotoBase64,
-        estado_id: parseInt(elements.regEstadoGeo.value),
-        municipio_id: parseInt(elements.regMunicipio.value),
-        parroquia_id: parseInt(elements.regParroquia.value)
+        estado_id: parseInt(elements.regEstadoGeo.value) || 0,
+        municipio_id: parseInt(elements.regMunicipio.value) || 0,
+        parroquia_id: parseInt(elements.regParroquia.value) || 0
     };
     
     if (!paciente.nombre_completo || !paciente.ubicacion_actual || !paciente.estado_salud) {
