@@ -12,8 +12,8 @@
     <!-- Open Graph / Facebook / WhatsApp Sharing -->
     <meta property="og:title" content="LocalizaVE - Sistema de Localización de Pacientes">
     <meta property="og:description" content="Sistema de consulta en tiempo real para la localización de pacientes afectados por terremoto en Venezuela.">
-    <meta property="og:image" content="/2.webp">
-    <meta property="og:image:type" content="image/webp">
+    <meta property="og:image" content="/1.png">
+    <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="512">
     <meta property="og:image:height" content="512">
     <meta property="og:type" content="website">
@@ -23,7 +23,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="LocalizaVE - Sistema de Localización de Pacientes">
     <meta name="twitter:description" content="Sistema de consulta en tiempo real para la localización de pacientes afectados por terremoto en Venezuela.">
-    <meta name="twitter:image" content="/2.webp">
+    <meta name="twitter:image" content="/1.png">
 
     <script>
         // Configurar metadatos og:image, og:url y twitter:image absolutos dinámicamente según el dominio actual
@@ -36,10 +36,10 @@
                 if (ogUrl) ogUrl.setAttribute('content', href);
                 
                 const ogImage = document.querySelector('meta[property="og:image"]');
-                if (ogImage) ogImage.setAttribute('content', origin + '/2.webp');
+                if (ogImage) ogImage.setAttribute('content', origin + '/1.png');
                 
                 const twitterImage = document.querySelector('meta[name="twitter:image"]');
-                if (twitterImage) twitterImage.setAttribute('content', origin + '/2.webp');
+                if (twitterImage) twitterImage.setAttribute('content', origin + '/1.png');
             } catch (e) {
                 console.error('Error configurando metadatos para compartir:', e);
             }
