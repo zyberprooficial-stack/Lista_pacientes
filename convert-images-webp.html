@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertir PNG a WebP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover {
+            background: #f0f4ff;
+            border-color: #764ba2;
+        }
+        .upload-area.dragover {
+            background: #e0e7ff;
+            border-color: #4338ca;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .results {
+            margin-top: 30px;
+        }
+        .result-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .result-item.success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+        }
+        .file-info {
+            flex: 1;
+        }
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .file-stats {
+            font-size: 12px;
+            color: #666;
+        }
+        .download-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .download-btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+        .quality-slider {
+            margin: 20px 0;
+        }
+        .quality-slider label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+        }
+        .quality-value {
+            font-weight: 700;
+            color: #667eea;
+            min-width: 40px;
+            text-align: right;
+        }
+        .info-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Convertir PNG a WebP</h1>
+        <p class="subtitle">Optimiza tus imágenes para la web</p>
+
+        <div class="quality-slider">
+            <label>Calidad de Compresión</label>
+            <div class="slider-container">
+                <input type="range" id="qualitySlider" min="60" max="100" value="85" step="5">
+                <span class="quality-value" id="qualityValue">85%</span>
+            </div>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📤</div>
+            <h3>Arrastra imágenes PNG aquí</h3>
+            <p>o haz clic para seleccionar</p>
+            <input type="file" id="fileInput" accept="image/png" multiple>
+        </div>
+
+        <div class="results" id="results"></div>
+
+        <div class="info-box">
+            <strong>💡 Tip:</strong> El formato WebP reduce el tamaño de las imágenes hasta un 30-50% sin pérdida visible de calidad.
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const results = document.getElementById('results');
+        const qualitySlider = document.getElementById('qualitySlider');
+        const qualityValue = document.getElementById('qualityValue');
+
+        // Actualizar valor de calidad
+        qualitySlider.addEventListener('input', (e) => {
+            qualityValue.textContent = e.target.value + '%';
+        });
+
+        // Click en área de carga
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'image/png');
+            if (files.length > 0) {
+                processFiles(files);
+            }
+        });
+
+        // Selección de archivos
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                processFiles(files);
+            }
+        });
+
+        // Procesar archivos
+        async function processFiles(files) {
+            results.innerHTML = '';
+
+            for (const file of files) {
+                await convertToWebP(file);
+            }
+        }
+
+        // Convertir a WebP
+        function convertToWebP(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    const img = new Image();
+                    
+                    img.onload = () => {
+                        // Crear canvas
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        
+                        // Convertir a WebP
+                        const quality = qualitySlider.value / 100;
+                        canvas.toBlob((blob) => {
+                            const originalSize = file.size;
+                            const newSize = blob.size;
+                            const reduction = ((1 - (newSize / originalSize)) * 100).toFixed(2);
+                            
+                            // Mostrar resultado
+                            showResult(file.name, originalSize, newSize, reduction, blob);
+                            resolve();
+                        }, 'image/webp', quality);
+                    };
+                    
+                    img.src = e.target.result;
+                };
+                
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Mostrar resultado
+        function showResult(originalName, originalSize, newSize, reduction, blob) {
+            const webpName = originalName.replace('.png', '.webp');
+            
+            const resultItem = document.createElement('div');
+            resultItem.className = 'result-item success';
+            resultItem.innerHTML = `
+                <div class="file-info">
+                    <div class="file-name">✅ ${webpName}</div>
+                    <div class="file-stats">
+                        Original: ${(originalSize / 1024).toFixed(2)} KB → 
+                        WebP: ${(newSize / 1024).toFixed(2)} KB 
+                        (reducción: ${reduction}%)
+                    </div>
+                </div>
+                <button class="download-btn" onclick="downloadFile('${webpName}', this.dataset.blob)">
+                    ⬇️ Descargar
+                </button>
+            `;
+            
+            // Guardar blob en el botón
+            const btn = resultItem.querySelector('.download-btn');
+            btn.blob = blob;
+            
+            results.appendChild(resultItem);
+        }
+
+        // Descargar archivo
+        function downloadFile(filename, blob) {
+            // Buscar el blob en el botón que se clickeó
+            const buttons = document.querySelectorAll('.download-btn');
+            let targetBlob = null;
+            
+            buttons.forEach(btn => {
+                if (btn.blob && btn.parentElement.querySelector('.file-name').textContent.includes(filename)) {
+                    targetBlob = btn.blob;
+                }
+            });
+            
+            if (targetBlob) {
+                const url = URL.createObjectURL(targetBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        }
+    </script>
+</body>
+</html>

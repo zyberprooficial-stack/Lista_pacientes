@@ -1,0 +1,39 @@
+# =====================================================
+# Cache Control - Forzar recarga de archivos
+# =====================================================
+
+# Desactivar caché para archivos HTML
+<FilesMatch "\.(html|htm)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</FilesMatch>
+
+# CSS y JavaScript - cache corto
+<FilesMatch "\.(css|js)$">
+    Header set Cache-Control "max-age=3600, must-revalidate"
+</FilesMatch>
+
+# Imágenes - cache largo
+<FilesMatch "\.(jpg|jpeg|png|gif|ico|svg|webp)$">
+    Header set Cache-Control "max-age=2592000"
+</FilesMatch>
+
+# Fuentes - cache largo
+<FilesMatch "\.(woff|woff2|ttf|eot)$">
+    Header set Cache-Control "max-age=2592000"
+</FilesMatch>
+
+# =====================================================
+# Compresión GZIP
+# =====================================================
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# =====================================================
+# CORS (si es necesario)
+# =====================================================
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+</IfModule>
