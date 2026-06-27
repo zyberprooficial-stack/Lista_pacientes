@@ -26,8 +26,10 @@ let currentFilters = {
     fechaHasta: ''
 };
 
-// Modo edición (se activa mediante un token secreto y difícil de adivinar en la URL)
-const editModeEnabled = new URLSearchParams(window.location.search).get('token') === 'sismo2026_admin_key_secure_access';
+// Modo edición: se activa si hay ?token=... en la URL.
+// El token se pasa directamente al backend — el backend lo valida contra ADMIN_TOKEN en el .env / Render.
+const _adminToken = new URLSearchParams(window.location.search).get('token') || '';
+const editModeEnabled = _adminToken.length > 0;
 let editingPatientId = null;
 
 // Caché para optimizar y reducir llamadas al servidor
@@ -1847,7 +1849,8 @@ async function handleUpdate(e) {
         const response = await fetch(`${API_BASE_URL}/pacientes/update?id=${editingPatientId}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-Admin-Token': _adminToken
             },
             body: JSON.stringify(paciente)
         });
