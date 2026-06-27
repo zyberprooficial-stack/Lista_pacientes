@@ -15,10 +15,7 @@ func main() {
 	// Cargar configuración desde variables de entorno
 	cfg := config.Load()
 
-	log.Println("🚀 ========================================")
-	log.Println("🚀 Iniciando servidor con SOPORTE DE FOTOS")
-	log.Println("🚀 Versión: 2.0 - Campo foto habilitado")
-	log.Println("🚀 ========================================")
+
 
 	// Inicializar conexión a base de datos con pool optimizado
 	if err := database.Init(cfg); err != nil {
@@ -26,7 +23,7 @@ func main() {
 	}
 	defer database.Close()
 
-	log.Println("✓ Conexión a base de datos establecida")
+
 
 	// Configurar multiplexor HTTP con rutas
 	mux := http.NewServeMux()
@@ -44,6 +41,9 @@ func main() {
 	mux.HandleFunc("/api/estados", handlers.GetEstados)
 	mux.HandleFunc("/api/municipios", handlers.GetMunicipios)
 	mux.HandleFunc("/api/parroquias", handlers.GetParroquias)
+
+	// Estadísticas
+	mux.HandleFunc("/api/stats", handlers.GetStats)
 
 	// Health check endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -72,10 +72,7 @@ func main() {
 		MaxHeaderBytes: 1 << 20,         // 1 MB max header size
 	}
 
-	log.Printf("🚀 Servidor iniciado en http://localhost:%s", cfg.Port)
-	log.Printf("📊 Max DB Connections: %d", cfg.MaxDBConnections)
-	log.Printf("⚡ Rate Limit: %d req/min por IP", cfg.RateLimitPerMinute)
-	log.Println("=====================================")
+
 
 	// Iniciar servidor
 	if err := server.ListenAndServe(); err != nil {

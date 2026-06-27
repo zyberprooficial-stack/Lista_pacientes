@@ -15,7 +15,6 @@ function initOpenStreetMapAutocomplete() {
     const inputSearch = document.getElementById('searchUbicacion');
     
     if (!inputReg && !inputSearch) {
-        console.error('Campos de ubicación no encontrados');
         return;
     }
 
@@ -28,8 +27,6 @@ function initOpenStreetMapAutocomplete() {
     if (inputSearch) {
         setupAutocomplete(inputSearch, 'search');
     }
-
-    console.log('✅ OpenStreetMap Autocomplete inicializado (GRATIS, sin API key)');
 }
 
 /**
@@ -168,7 +165,6 @@ async function searchPlacesOSM(query, prefix) {
         }
 
     } catch (error) {
-        console.error('Error buscando lugares:', error);
         suggestionsContainer.innerHTML = '<div class="osm-error">⚠️ Error al buscar. Intente de nuevo.</div>';
     }
 }
@@ -236,7 +232,6 @@ async function searchHospitalsDirectlyOSM(query, prefix) {
         }
 
     } catch (error) {
-        console.error('Error en búsqueda de hospitales:', error);
         suggestionsContainer.innerHTML = '<div class="osm-error">⚠️ Error al buscar</div>';
     }
 }
@@ -368,8 +363,6 @@ function selectPlaceOSM(place, prefix) {
     setTimeout(() => {
         input.classList.remove('place-selected');
     }, 600);
-    
-    console.log('✅ Lugar seleccionado:', fullLocation);
 }
 
 /**

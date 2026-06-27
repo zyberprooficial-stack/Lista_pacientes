@@ -11,36 +11,11 @@ import (
 	"time"
 )
 
-// Logging middleware registra todas las requests
+// Logging middleware — mantiene la cadena de handlers sin emitir logs
 func Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-
-		// Custom ResponseWriter para capturar status code
-		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-
-		next.ServeHTTP(wrapped, r)
-
-		log.Printf(
-			"%s %s %d %s %s",
-			r.Method,
-			r.RequestURI,
-			wrapped.statusCode,
-			time.Since(start),
-			r.RemoteAddr,
-		)
+		next.ServeHTTP(w, r)
 	})
-}
-
-// responseWriter wrapper para capturar status code
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
 }
 
 // CORS middleware permite cross-origin requests
@@ -82,7 +57,7 @@ func RateLimit(next http.Handler) http.Handler {
 	if limiter == nil {
 		limiter = &RateLimiter{
 			visitors: make(map[string]*visitor),
-			rate:     100,          // 100 requests
+			rate:     200,          // 200 requests
 			window:   time.Minute,  // por minuto
 		}
 

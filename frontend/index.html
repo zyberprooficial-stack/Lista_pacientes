@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
@@ -9,88 +10,143 @@
     <meta name="description" content="Sistema de consulta de pacientes afectados por terremoto en Venezuela">
     <title>Localizave - Sistema de Localización de Pacientes</title>
     <link rel="icon" type="image/webp" href="2.webp">
-    <link rel="alternate icon" type="image/png" href="2.png">
+    <link rel="shortcut icon" type="image/webp" href="2.webp">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=2.0">
+    <link rel="stylesheet" href="styles.css?v=3.0">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
+
 <body>
     <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-logo">
-                <picture>
-                    <source srcset="2.webp" type="image/webp">
-                    <img src="2.png" alt="Localizavey Logo" class="logo-image">
-                </picture>
+        <!-- Header / Navigation Bar (Linear/Vercel Style) -->
+        <header class="hero-header">
+            <div class="hero-brand">
+                <img src="2.webp" alt="LocalizaVE Logo" class="hero-logo">
+                <div class="hero-text">
+                    <h1>LocalizaVE</h1>
+                    <p class="hero-subtitle">Sistema de Localización de Pacientes</p>
+                </div>
             </div>
-            <h1>Localizave</h1>
-            <p class="subtitle">Sistema de Localización de Pacientes - Venezuela</p>
+            <div class="header-actions">
+                <button id="showSearchBtn" class="btn btn-primary btn-action-tab active">
+                    <i data-lucide="search"></i>
+                    <span>Buscar Pacientes</span>
+                </button>
+                <button id="showRegisterBtn" class="btn btn-secondary btn-action-tab">
+                    <i data-lucide="plus-circle"></i>
+                    <span>Registrar Paciente</span>
+                </button>
+            </div>
         </header>
 
-        <!-- Acciones Rápidas -->
-        <div class="action-cards">
-            <button id="showSearchBtn" class="action-card active">
-                <picture>
-                    <source srcset="2.webp" type="image/webp">
-                    <img src="2.png" alt="Logo" class="action-card-logo">
-                </picture>
-                <span class="action-icon">🔍</span>
-                <div>
-                    <h3>Buscar Pacientes</h3>
-                    <p>Consulta el registro de afectados</p>
+        <!-- Estadísticas Rápidas (Linear/Vercel Style) -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon-wrapper">
+                    <i data-lucide="users"></i>
                 </div>
-            </button>
-            <button id="showRegisterBtn" class="action-card">
-                <span class="action-icon">➕</span>
-                <div>
-                    <h3>Registrar Paciente</h3>
-                    <p>Agregar nuevo registro público</p>
+                <div class="stat-content">
+                    <span class="stat-label">Pacientes registrados</span>
+                    <span class="stat-value" id="statPatients">0</span>
                 </div>
-            </button>
+            </div>
+            <div class="stat-card stat-card--estable">
+                <div class="stat-icon-wrapper">
+                    <i data-lucide="heart-pulse"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Estables</span>
+                    <span class="stat-value" id="statEstable">0</span>
+                </div>
+            </div>
+            <div class="stat-card stat-card--critico">
+                <div class="stat-icon-wrapper">
+                    <i data-lucide="alert-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Críticos</span>
+                    <span class="stat-value" id="statCritico">0</span>
+                </div>
+            </div>
+            <div class="stat-card stat-card--fallecido">
+                <div class="stat-icon-wrapper">
+                    <i data-lucide="cross"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Fallecidos</span>
+                    <span class="stat-value" id="statFallecido">0</span>
+                </div>
+            </div>
+            <div class="stat-card stat-card--desconocido">
+                <div class="stat-icon-wrapper">
+                    <i data-lucide="help-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Desconocidos</span>
+                    <span class="stat-value" id="statDesconocido">0</span>
+                </div>
+            </div>
         </div>
 
-        <!-- Búsqueda -->
+        <!-- Búsqueda Principal Dominante -->
         <section id="searchSection" class="search-section">
-            <form id="searchForm" class="search-form">
-                <div class="search-grid">
-                    <div class="input-group">
-                        <label for="searchNombre">Nombre</label>
-                        <input 
-                            type="text" 
-                            id="searchNombre" 
-                            placeholder="Ej: Juan Pérez"
-                            autocomplete="off"
-                        >
-                    </div>
-                    
-                    <div class="input-group">
-                        <label for="searchCedula">Cédula</label>
-                        <input 
-                            type="text" 
-                            id="searchCedula" 
-                            placeholder="Ej: V12345678"
-                            autocomplete="off"
-                        >
-                    </div>
-                    
-                    <div class="input-group">
-                        <label for="searchUbicacion">Ubicación</label>
-                        <input 
-                            type="text" 
-                            id="searchUbicacion" 
-                            placeholder="Buscar hospital, ciudad..."
-                            autocomplete="off"
-                        >
-                        <small class="input-hint">🏥 Autocompletado inteligente</small>
+            <form id="searchForm" class="search-form-unified">
+                <!-- Inputs ocultos para compatibilidad con app.js -->
+                <input type="hidden" id="searchNombre">
+                <input type="hidden" id="searchCedula">
+                <input type="hidden" id="searchUbicacion">
+
+                <div class="search-bar-wrapper">
+                    <i data-lucide="search" class="search-icon-main"></i>
+                    <input type="text" id="unifiedSearchInput" placeholder="Nombre, cédula, hospital o ciudad..."
+                        autocomplete="off" class="search-input-main">
+                    <button type="button" id="clearBtn" class="btn-clear-search" title="Limpiar búsqueda">
+                        <i data-lucide="x"></i>
+                    </button>
+                    <button type="submit" class="btn btn-primary search-submit-btn">
+                        <span>Buscar</span>
+                    </button>
+                </div>
+
+                <!-- Filtros Rápidos (Toggles Premium con Lucide) -->
+                <div class="quick-filters-container">
+                    <span class="quick-filters-label">Buscar por:</span>
+                    <div class="quick-filters-list">
+                        <button type="button" class="quick-filter-pill active" data-filter="all">
+                            <i data-lucide="check" class="filter-check-icon"></i>
+                            <span>Todo</span>
+                        </button>
+                        <button type="button" class="quick-filter-pill" data-filter="nombre">
+                            <i data-lucide="check" class="filter-check-icon"></i>
+                            <span>Nombre</span>
+                        </button>
+                        <button type="button" class="quick-filter-pill" data-filter="cedula">
+                            <i data-lucide="check" class="filter-check-icon"></i>
+                            <span>Cédula</span>
+                        </button>
+                        <button type="button" class="quick-filter-pill" data-filter="hospital">
+                            <i data-lucide="check" class="filter-check-icon"></i>
+                            <span>Hospital</span>
+                        </button>
+                        <button type="button" class="quick-filter-pill" data-filter="ciudad">
+                            <i data-lucide="check" class="filter-check-icon"></i>
+                            <span>Ciudad</span>
+                        </button>
+                        <button type="button" class="quick-filter-pill" data-filter="estado">
+                            <i data-lucide="check" class="filter-check-icon"></i>
+                            <span>Estado</span>
+                        </button>
                     </div>
                 </div>
 
                 <!-- Filtros Avanzados (Colapsable) -->
                 <div class="advanced-filters">
                     <button type="button" id="toggleFiltersBtn" class="toggle-filters-btn">
-                        <span id="filterIcon">▼</span> Filtros Avanzados
+                        <i data-lucide="sliders-horizontal" class="filter-icon-lucide"></i>
+                        <span>Filtros Avanzados</span>
                     </button>
                     <div id="advancedFiltersContent" class="advanced-filters-content" style="display: none;">
                         <div class="search-grid">
@@ -100,14 +156,14 @@
                                     <option value="">Todos los estados</option>
                                 </select>
                             </div>
-                            
+
                             <div class="input-group">
                                 <label for="searchMunicipio">Municipio</label>
                                 <select id="searchMunicipio" class="select-input" disabled>
                                     <option value="">Primero seleccione un estado</option>
                                 </select>
                             </div>
-                            
+
                             <div class="input-group">
                                 <label for="searchParroquia">Parroquia</label>
                                 <select id="searchParroquia" class="select-input" disabled>
@@ -126,31 +182,18 @@
                                     <option value="Desconocido">Desconocido</option>
                                 </select>
                             </div>
-                            
+
                             <div class="input-group">
                                 <label for="searchFechaDesde">Fecha Desde</label>
-                                <input 
-                                    type="date" 
-                                    id="searchFechaDesde"
-                                    class="date-input"
-                                >
+                                <input type="date" id="searchFechaDesde" class="date-input">
                             </div>
-                            
+
                             <div class="input-group">
                                 <label for="searchFechaHasta">Fecha Hasta</label>
-                                <input 
-                                    type="date" 
-                                    id="searchFechaHasta"
-                                    class="date-input"
-                                >
+                                <input type="date" id="searchFechaHasta" class="date-input">
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="button-group">
-                    <button type="submit" class="btn btn-primary">🔍 Buscar</button>
-                    <button type="button" id="clearBtn" class="btn btn-secondary">✖ Limpiar</button>
                 </div>
             </form>
         </section>
@@ -158,25 +201,19 @@
         <!-- Registro de Paciente -->
         <section id="registerSection" class="register-section" style="display: none;">
             <form id="registerForm" class="register-form">
-                <h2 class="form-title">📝 Registro Público de Paciente</h2>
+                <h2 class="form-title"><i data-lucide="clipboard-list"
+                        style="width:20px;height:20px;vertical-align:middle;margin-right:8px;"></i>Registro Público de
+                    Paciente</h2>
                 <p class="form-subtitle">Complete la información del paciente afectado</p>
 
                 <div class="form-grid">
                     <div class="input-group">
                         <label for="regNombre">Nombre Completo <span class="required">*</span></label>
-                        <input 
-                            type="text" 
-                            id="regNombre" 
-                            placeholder="NOMBRE Y APELLIDO COMPLETO"
-                            required
-                            maxlength="50"
-                            pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+"
-                            title="Solo letras, máximo 50 caracteres"
-                            style="text-transform: uppercase;"
-                        >
-                        <small class="input-hint">Solo letras, máximo 50 caracteres (se convierte a mayúsculas automáticamente)</small>
+                        <input type="text" id="regNombre" placeholder="NOMBRE Y APELLIDO COMPLETO" required
+                            maxlength="50" pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+" title="Solo letras, máximo 50 caracteres"
+                            style="text-transform: uppercase;">
                     </div>
-                    
+
                     <div class="input-group">
                         <label for="regCedula">Cédula</label>
                         <div style="display: flex; gap: 8px;">
@@ -184,80 +221,56 @@
                                 <option value="V">V</option>
                                 <option value="E">E</option>
                             </select>
-                            <input 
-                                type="text" 
-                                id="regCedulaNumero" 
-                                placeholder="1234567 (6-9 dígitos)"
-                                pattern="[0-9]{6,9}"
-                                maxlength="9"
-                                style="flex: 1;"
-                            >
+                            <input type="text" id="regCedulaNumero" placeholder="1234567 (6-9 dígitos)"
+                                pattern="[0-9]{6,9}" maxlength="9" style="flex: 1;">
                         </div>
-                        <small class="input-hint">Formato: V o E seguido de 6-9 dígitos (se valida duplicación en tiempo real)</small>
                         <small id="cedulaValidationMsg" style="display: none; margin-top: 4px;"></small>
                     </div>
-                    
+
                     <div class="input-group">
                         <label for="regTelefono">Teléfono de Contacto</label>
-                        <input 
-                            type="tel" 
-                            id="regTelefono" 
-                            placeholder="0414-1234567 (opcional)"
-                            maxlength="15"
-                            pattern="[0-9\-]+"
-                        >
-                        <small class="input-hint">Máximo 15 caracteres (solo números y guiones)</small>
+                        <input type="tel" id="regTelefono" placeholder="0414-1234567 (opcional)" maxlength="15"
+                            pattern="[0-9\-]+">
                     </div>
-                    
+
                     <div class="input-group">
                         <label for="regEdad">Edad</label>
-                        <input 
-                            type="number" 
-                            id="regEdad" 
-                            placeholder="Edad en años (opcional)"
-                            min="0"
-                            max="120"
-                        >
-                        <small class="input-hint">Edad del paciente (0-120 años)</small>
+                        <input type="number" id="regEdad" placeholder="Edad en años (opcional)" min="0" max="120">
                     </div>
-                    
+
                     <div class="input-group">
-                        <label for="regEstado">Estado <span class="required">*</span></label>
-                        <select id="regEstado" class="select-input" required>
+                        <label for="regEstado">Estado</label>
+                        <select id="regEstado" class="select-input">
                             <option value="">Seleccione un estado...</option>
                         </select>
                     </div>
-                    
+
                     <div class="input-group">
-                        <label for="regMunicipio">Municipio <span class="required">*</span></label>
-                        <select id="regMunicipio" class="select-input" required disabled>
+                        <label for="regMunicipio">Municipio</label>
+                        <select id="regMunicipio" class="select-input" disabled>
                             <option value="">Primero seleccione un estado</option>
                         </select>
                     </div>
-                    
+
                     <div class="input-group">
-                        <label for="regParroquia">Parroquia <span class="required">*</span></label>
-                        <select id="regParroquia" class="select-input" required disabled>
+                        <label for="regParroquia">Parroquia</label>
+                        <select id="regParroquia" class="select-input" disabled>
                             <option value="">Primero seleccione un municipio</option>
                         </select>
                     </div>
-                    
+
                     <div class="input-group full-width">
                         <label for="regFoto">Foto del Paciente (opcional)</label>
                         <div class="foto-upload-container" id="fotoUploadContainer">
                             <div class="foto-preview" id="fotoPreview" style="display: none;">
                                 <img id="fotoPreviewImg" src="" alt="Vista previa">
-                                <button type="button" class="foto-remove-btn" id="fotoRemoveBtn" title="Eliminar foto">✕</button>
+                                <button type="button" class="foto-remove-btn" id="fotoRemoveBtn"
+                                    title="Eliminar foto">✕</button>
                             </div>
                             <div class="foto-buttons">
                                 <label for="regFoto" class="btn btn-secondary foto-btn">
                                     📁 Seleccionar Foto
-                                    <input 
-                                        type="file" 
-                                        id="regFoto" 
-                                        accept="image/*"
-                                        style="display: none;"
-                                    >
+                                    <input type="file" id="regFoto" accept="image/*" style="display: none;">
                                 </label>
                                 <button type="button" class="btn btn-secondary foto-btn" id="tomarFotoBtn">
                                     📷 Tomar Foto
@@ -266,24 +279,17 @@
                             <div class="foto-info" id="fotoInfo" style="display: none;">
                                 📸 Foto cargada: <span id="fotoSize">0 KB</span>
                             </div>
-                            <small class="input-hint">✨ La foto se comprimirá automáticamente a formato optimizado (máx 200KB)</small>
                         </div>
                         <input type="hidden" id="regFotoBase64" name="foto">
                     </div>
-                    
+
                     <div class="input-group full-width">
                         <label for="regUbicacion">Ubicación Específica <span class="required">*</span></label>
-                        <input 
-                            type="text" 
-                            id="regUbicacion" 
-                            placeholder="Ej: caracas, maracaibo, valencia..."
-                            required
-                            maxlength="300"
-                            autocomplete="off"
-                        >
-                        <small class="input-hint">🏥 Escriba el nombre de una ciudad para ver hospitales y clínicas disponibles</small>
+                        <input type="text" id="regUbicacion" placeholder="Buscar hospital, ciudad..." required
+                            maxlength="300" autocomplete="off">
+                        <small class="input-hint">🏥 Autocompletado automático</small>
                     </div>
-                    
+
                     <div class="input-group">
                         <label for="regEstadoSalud">Estado de Salud <span class="required">*</span></label>
                         <select id="regEstadoSalud" class="select-input" required>
@@ -297,8 +303,14 @@
                 </div>
 
                 <div class="button-group">
-                    <button type="submit" class="btn btn-primary btn-lg">💾 Registrar Paciente</button>
-                    <button type="button" id="cancelRegisterBtn" class="btn btn-secondary">✖ Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="save" style="width:15px;height:15px;"></i>
+                        Registrar Paciente
+                    </button>
+                    <button type="button" id="cancelRegisterBtn" class="btn btn-secondary">
+                        <i data-lucide="x" style="width:15px;height:15px;"></i>
+                        Cancelar
+                    </button>
                 </div>
             </form>
         </section>
@@ -377,7 +389,6 @@
         <!-- Footer -->
         <footer class="footer">
             <p>Sistema público de consulta en tiempo real</p>
-            <p class="footer-note">🚨 EMERGENCIA 911 - Atención médica inmediata</p>
         </footer>
     </div>
 
@@ -386,6 +397,9 @@
         <div class="camera-container">
             <video id="cameraVideo" autoplay playsinline></video>
             <canvas id="cameraCanvas" style="display: none;"></canvas>
+            <button type="button" class="btn-switch-camera" id="switchCameraBtn" title="Cambiar cámara">
+                🔄
+            </button>
             <div class="camera-controls">
                 <button type="button" class="btn btn-primary" id="captureFotoBtn">📸 Capturar Foto</button>
                 <button type="button" class="btn btn-secondary" id="cancelCameraBtn">✖ Cancelar</button>
@@ -407,9 +421,14 @@
     <!-- OpenStreetMap Autocomplete (GRATIS, sin API key) -->
     <script src="openstreetmap-autocomplete.js?v=2.0"></script>
     <script src="config.js?v=2.1"></script>
-    <script src="app.js?v=2.1"></script>
-
-
-
+    <script src="app.js?v=2.2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        });
+    </script>
 </body>
+
 </html>

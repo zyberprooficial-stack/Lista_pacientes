@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -56,7 +55,6 @@ func GetPacientes(w http.ResponseWriter, r *http.Request) {
 	// Obtener pacientes de la base de datos
 	response, err := database.GetPacientes(ctx, page, limit, nombre, cedula, ubicacion, estado, estadoID, municipioID, parroquiaID, fechaDesde, fechaHasta)
 	if err != nil {
-		log.Printf("Error obteniendo pacientes: %v", err)
 		respondError(w, http.StatusInternalServerError, "Error obteniendo pacientes")
 		return
 	}
@@ -80,12 +78,7 @@ func CreatePaciente(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// DEBUG: Log para verificar si foto llega
-	if input.Foto != "" {
-		log.Printf("🔵 DEBUG Handler: Foto recibida (tamaño: %d bytes)", len(input.Foto))
-	} else {
-		log.Printf("🔴 DEBUG Handler: NO se recibió foto")
-	}
+
 
 	// Validar entrada
 	if errors := input.Validate(); len(errors) > 0 {
@@ -100,7 +93,6 @@ func CreatePaciente(w http.ResponseWriter, r *http.Request) {
 	// Crear paciente en base de datos
 	paciente, err := database.CreatePaciente(ctx, &input)
 	if err != nil {
-		log.Printf("Error creando paciente: %v", err)
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -160,7 +152,6 @@ func BulkUpload(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if err != nil {
-			log.Printf("Error leyendo línea %d del CSV: %v", lineNum+1, err)
 			lineNum++
 			continue
 		}
@@ -194,7 +185,6 @@ func BulkUpload(w http.ResponseWriter, r *http.Request) {
 	// Insertar en base de datos
 	result, err := database.BulkInsertPacientes(ctx, pacientes)
 	if err != nil {
-		log.Printf("Error en bulk insert: %v", err)
 		respondError(w, http.StatusInternalServerError, "Error procesando carga masiva")
 		return
 	}
@@ -243,6 +233,25 @@ func validateHeader(actual, expected []string) bool {
 }
 
 
+// GetStats maneja GET /api/stats
+func GetStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	stats, err := database.GetStats(ctx)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Error obteniendo estadísticas")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, stats)
+}
+
 // GetEstados maneja GET /api/estados
 func GetEstados(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -258,7 +267,6 @@ func GetEstados(w http.ResponseWriter, r *http.Request) {
 
 	estados, err := database.GetEstados(ctx)
 	if err != nil {
-		log.Printf("Error obteniendo estados: %v", err)
 		respondError(w, http.StatusInternalServerError, "Error obteniendo estados")
 		return
 	}
@@ -287,7 +295,6 @@ func GetMunicipios(w http.ResponseWriter, r *http.Request) {
 
 	municipios, err := database.GetMunicipios(ctx, estadoID)
 	if err != nil {
-		log.Printf("Error obteniendo municipios: %v", err)
 		respondError(w, http.StatusInternalServerError, "Error obteniendo municipios")
 		return
 	}
@@ -316,7 +323,6 @@ func GetParroquias(w http.ResponseWriter, r *http.Request) {
 
 	parroquias, err := database.GetParroquias(ctx, municipioID)
 	if err != nil {
-		log.Printf("Error obteniendo parroquias: %v", err)
 		respondError(w, http.StatusInternalServerError, "Error obteniendo parroquias")
 		return
 	}

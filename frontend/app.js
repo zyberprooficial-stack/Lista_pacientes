@@ -13,6 +13,7 @@ let currentPage = 1;
 let currentLimit = 20;
 let displayedCount = 0;
 let lastPagination = null;
+let lastPacientesResponse = null;
 let currentFilters = {
     nombre: '',
     cedula: '',
@@ -111,11 +112,44 @@ elements.regMunicipio.addEventListener('change', handleMunicipioChange);
 elements.searchEstadoGeo.addEventListener('change', handleSearchEstadoChange);
 elements.searchMunicipio.addEventListener('change', handleSearchMunicipioChange);
 
+// Listener de redimensionado responsivo inteligente
+let lastWasMobile = isMobileView();
+window.addEventListener('resize', debounce(() => {
+    const currentMobile = isMobileView();
+    if (currentMobile !== lastWasMobile) {
+        lastWasMobile = currentMobile;
+        if (lastPacientesResponse) {
+            renderResults(lastPacientesResponse, false);
+            updatePagination(lastPagination);
+        }
+    }
+}, 150));
+
 // Cargar datos iniciales al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
     loadPacientes();
     loadEstados();
     loadEstadosSearch();
+    loadStats();
+    
+    // Configurar listeners para las pills de filtro rápido
+    document.querySelectorAll('.quick-filter-pill').forEach(pill => {
+        pill.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.quick-filter-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            
+            // Si hay texto, disparar búsqueda, si no, dar focus al input
+            const queryInput = document.getElementById('unifiedSearchInput');
+            if (queryInput) {
+                if (queryInput.value.trim() !== '') {
+                    handleSearch();
+                } else {
+                    queryInput.focus();
+                }
+            }
+        });
+    });
 });
 
 /**
@@ -124,8 +158,17 @@ document.addEventListener('DOMContentLoaded', () => {
 function showSearchSection() {
     elements.searchSection.style.display = 'block';
     elements.registerSection.style.display = 'none';
-    elements.showSearchBtn.classList.add('active');
-    elements.showRegisterBtn.classList.remove('active');
+    
+    // Toggle premium button styles (Primary vs Secondary)
+    elements.showSearchBtn.className = 'btn btn-primary btn-action-tab active';
+    elements.showRegisterBtn.className = 'btn btn-secondary btn-action-tab';
+    
+    // Asegurar que se muestre la sección de resultados
+    document.querySelector('.results-section').style.display = 'block';
+    elements.pagination.style.display = lastPagination && lastPagination.total_pages > 1 ? 'flex' : 'none';
+    if (elements.resultsInfo && displayedCount > 0) {
+        elements.resultsInfo.style.display = 'block';
+    }
     
     // Ocultar mensajes
     hideError();
@@ -138,8 +181,10 @@ function showSearchSection() {
 function showRegisterSection() {
     elements.searchSection.style.display = 'none';
     elements.registerSection.style.display = 'block';
-    elements.showSearchBtn.classList.remove('active');
-    elements.showRegisterBtn.classList.add('active');
+    
+    // Toggle premium button styles (Primary vs Secondary)
+    elements.showSearchBtn.className = 'btn btn-secondary btn-action-tab';
+    elements.showRegisterBtn.className = 'btn btn-primary btn-action-tab active';
     
     // Ocultar tabla de resultados y mensajes
     document.querySelector('.results-section').style.display = 'none';
@@ -173,12 +218,42 @@ function toggleAdvancedFilters() {
  * Maneja el envío del formulario de búsqueda
  */
 function handleSearch(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    
+    const queryInput = document.getElementById('unifiedSearchInput');
+    const query = queryInput ? queryInput.value.trim() : '';
+    
+    // Obtener filtro rápido activo
+    const activePill = document.querySelector('.quick-filter-pill.active');
+    const activeFilter = activePill ? activePill.dataset.filter : 'all';
+    
+    let nombre = '';
+    let cedula = '';
+    let ubicacion = '';
+    
+    if (activeFilter === 'all') {
+        // Auto-detectar tipo de búsqueda según el patrón ingresado
+        if (/^[VEve]?\d+$/.test(query)) {
+            cedula = query;
+        } else if (/\b(hospital|clinica|cdi|ambulatorio|seguro|ivss|maternidad|sanatorio)\b/i.test(query)) {
+            ubicacion = query;
+        } else {
+            nombre = query;
+        }
+    } else if (activeFilter === 'nombre') {
+        nombre = query;
+    } else if (activeFilter === 'cedula') {
+        cedula = query;
+    } else if (activeFilter === 'hospital' || activeFilter === 'ciudad') {
+        ubicacion = query;
+    } else if (activeFilter === 'estado') {
+        ubicacion = query; // Enviar como ubicación (el backend busca en estado con full-text)
+    }
     
     currentFilters = {
-        nombre: elements.searchNombre.value.trim(),
-        cedula: elements.searchCedula.value.trim(),
-        ubicacion: elements.searchUbicacion.value.trim(),
+        nombre: nombre,
+        cedula: cedula,
+        ubicacion: ubicacion,
         estado: elements.searchEstado.value,
         estadoID: elements.searchEstadoGeo.value ? parseInt(elements.searchEstadoGeo.value) : 0,
         municipioID: elements.searchMunicipio.value ? parseInt(elements.searchMunicipio.value) : 0,
@@ -199,9 +274,14 @@ function handleSearch(e) {
  * Limpia los filtros y recarga
  */
 function handleClear() {
-    elements.searchNombre.value = '';
-    elements.searchCedula.value = '';
-    elements.searchUbicacion.value = '';
+    const queryInput = document.getElementById('unifiedSearchInput');
+    if (queryInput) queryInput.value = '';
+    
+    // Restaurar filtro rápido por defecto ("Todo")
+    document.querySelectorAll('.quick-filter-pill').forEach(p => p.classList.remove('active'));
+    const defaultPill = document.querySelector('.quick-filter-pill[data-filter="all"]');
+    if (defaultPill) defaultPill.classList.add('active');
+    
     elements.searchEstado.value = '';
     elements.searchEstadoGeo.value = '';
     elements.searchMunicipio.value = '';
@@ -254,7 +334,6 @@ async function loadEstados() {
         poblarDropdownEstados(estados);
         
     } catch (error) {
-        console.error('Error cargando estados:', error);
         showError('Error cargando lista de estados');
     }
 }
@@ -310,7 +389,6 @@ async function handleEstadoChange(e) {
         poblarDropdownMunicipios(municipios);
         
     } catch (error) {
-        console.error('Error cargando municipios:', error);
         showError('Error cargando lista de municipios');
     }
 }
@@ -366,7 +444,6 @@ async function handleMunicipioChange(e) {
         poblarDropdownParroquias(parroquias);
         
     } catch (error) {
-        console.error('Error cargando parroquias:', error);
         showError('Error cargando lista de parroquias');
     }
 }
@@ -400,8 +477,6 @@ async function handleRegister(e) {
     const fotoBase64Input = document.getElementById('regFotoBase64');
     const fotoBase64 = fotoBase64Input ? fotoBase64Input.value : '';
     
-    console.log('📸 DEBUG - Foto en formulario:', fotoBase64 ? `Sí (${Math.round(fotoBase64.length / 1024)}KB)` : 'No hay foto');
-    
     // Construir la cédula completa (tipo + número)
     const regCedulaTipo = document.getElementById('regCedulaTipo');
     const regCedulaNumero = document.getElementById('regCedulaNumero');
@@ -424,12 +499,6 @@ async function handleRegister(e) {
     // Validación básica
     if (!paciente.nombre_completo || !paciente.ubicacion_actual || !paciente.estado_salud) {
         showError('Por favor complete todos los campos requeridos');
-        return;
-    }
-    
-    // Validar que se hayan seleccionado estado, municipio y parroquia
-    if (!paciente.estado_id || !paciente.municipio_id || !paciente.parroquia_id) {
-        showError('Por favor seleccione Estado, Municipio y Parroquia');
         return;
     }
     
@@ -462,11 +531,6 @@ async function handleRegister(e) {
     
     showLoading();
     
-    console.log('📤 DEBUG - Enviando paciente al servidor:', {
-        ...paciente,
-        foto: paciente.foto ? `[Base64 ${Math.round(paciente.foto.length / 1024)}KB]` : 'Sin foto'
-    });
-    
     try {
         const response = await fetch(`${API_BASE_URL}/pacientes/create`, {
             method: 'POST',
@@ -476,11 +540,7 @@ async function handleRegister(e) {
             body: JSON.stringify(paciente)
         });
         
-        console.log('📥 DEBUG - Respuesta del servidor:', response.status);
-        
         const data = await response.json();
-        
-        console.log('📥 DEBUG - Datos recibidos:', data);
         
         if (!response.ok) {
             // Mostrar detalles de validación si están disponibles
@@ -503,6 +563,9 @@ async function handleRegister(e) {
         elements.regParroquia.innerHTML = '<option value="">Primero seleccione un municipio</option>';
         elements.regParroquia.disabled = true;
         
+        // Actualizar stats con el nuevo registro
+        loadStats();
+        
         // Opcional: volver a búsqueda después de 4 segundos
         setTimeout(() => {
             showSearchSection();
@@ -510,7 +573,6 @@ async function handleRegister(e) {
         }, 4000);
         
     } catch (error) {
-        console.error('Error registrando paciente:', error);
         showError(error.message);
     } finally {
         hideLoading();
@@ -620,12 +682,12 @@ async function loadPacientes(append = false) {
         
         const data = await response.json();
         lastPagination = data.pagination;
+        lastPacientesResponse = data;
         
         renderResults(data, append);
         updatePagination(data.pagination);
         
     } catch (error) {
-        console.error('Error cargando pacientes:', error);
         
         if (error.name === 'AbortError') {
             showError('La solicitud tardó demasiado. Verifique su conexión.');
@@ -671,7 +733,7 @@ function createPhotoElement(paciente) {
     if (!paciente.foto) {
         const placeholder = document.createElement('div');
         placeholder.className = 'patient-photo-placeholder';
-        placeholder.textContent = '👤';
+        placeholder.innerHTML = '<i data-lucide="user" class="placeholder-icon"></i>';
         return placeholder;
     }
 
@@ -731,7 +793,7 @@ function createMobileCardRow(paciente) {
                         </div>
                     </div>
                 </div>
-                <span class="patient-card-toggle">Ver detalles ▼</span>
+                <span class="patient-card-toggle">Ver detalles</span>
             </button>
             <div class="patient-card-details">
                 <div class="detail-row"><span>Edad</span><span>${f.edad}</span></div>
@@ -781,6 +843,11 @@ function renderResults(data, append = false) {
         fragment.appendChild(createPatientRow(paciente));
     });
     tbody.appendChild(fragment);
+    
+    // Re-inicializar iconos de Lucide dinámicos
+    if (window.lucide) {
+        lucide.createIcons();
+    }
 }
 
 /**
@@ -813,6 +880,38 @@ function updateResultsInfo(pagination, shown, append = false) {
     elements.resultsRange.textContent = `Mostrando ${from}-${to} de ${total.toLocaleString('es-VE')}`;
     elements.resultsInfo.style.display = 'block';
     elements.resultsHint.style.display = total >= MANY_RECORDS_HINT ? 'block' : 'none';
+    
+    // Actualizar estadística rápida del total
+    const statPatients = document.getElementById('statPatients');
+    if (statPatients) {
+        statPatients.textContent = total.toLocaleString('es-VE');
+    }
+}
+
+/**
+ * Carga estadísticas reales desde la API
+ */
+async function loadStats() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/stats`);
+        if (!response.ok) return;
+        const stats = await response.json();
+        
+        const el = (id, val) => {
+            const node = document.getElementById(id);
+            if (node) node.textContent = val.toLocaleString('es-VE');
+        };
+        
+        el('statPatients',   stats.total);
+        el('statEstable',    stats.estable);
+        el('statCritico',    stats.critico);
+        el('statFallecido',  stats.fallecido);
+        el('statDesconocido', stats.desconocido);
+        
+    } catch (error) {
+        // Silencioso: los stats no son críticos
+        console.warn('No se pudieron cargar las estadísticas:', error);
+    }
 }
 
 /**
@@ -960,7 +1059,7 @@ async function loadEstadosSearch() {
         poblarDropdownEstadosSearch(estados);
         
     } catch (error) {
-        console.error('Error cargando estados para búsqueda:', error);
+        // Error silencioso
     }
 }
 
@@ -1015,7 +1114,7 @@ async function handleSearchEstadoChange(e) {
         poblarDropdownMunicipiosSearch(municipios);
         
     } catch (error) {
-        console.error('Error cargando municipios:', error);
+        // Error silencioso
     }
 }
 
@@ -1070,7 +1169,7 @@ async function handleSearchMunicipioChange(e) {
         poblarDropdownParroquiasSearch(parroquias);
         
     } catch (error) {
-        console.error('Error cargando parroquias:', error);
+        // Error silencioso
     }
 }
 
@@ -1126,11 +1225,13 @@ elements.regCedulaNumero = document.getElementById('regCedulaNumero');
 elements.regCedulaTipo = document.getElementById('regCedulaTipo');
 
 function validateCedulaNumber(e) {
-    // Solo permitir números
-    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    // Solo permitir números en el campo de número (no en el select de tipo)
+    if (e.target === elements.regCedulaNumero) {
+        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    }
     
     // Validar longitud (6-9 dígitos)
-    const numero = e.target.value;
+    const numero = elements.regCedulaNumero.value;
     const tipo = elements.regCedulaTipo.value;
     const msgElement = document.getElementById('cedulaValidationMsg');
     
@@ -1138,6 +1239,7 @@ function validateCedulaNumber(e) {
         msgElement.style.display = 'block';
         msgElement.style.color = '#f59e0b';
         msgElement.textContent = 'La cédula debe tener entre 6 y 9 dígitos';
+        elements.regCedulaNumero.setCustomValidity('Cédula inválida');
         return;
     }
     
@@ -1157,15 +1259,14 @@ function validateCedulaNumber(e) {
             if (data.data && data.data.length > 0) {
                 msgElement.style.color = '#f43f5e';
                 msgElement.textContent = '⚠️ Esta cédula ya está registrada';
-                e.target.setCustomValidity('Cédula duplicada');
+                elements.regCedulaNumero.setCustomValidity('Cédula duplicada');
             } else {
                 msgElement.style.color = '#10b981';
                 msgElement.textContent = '✓ Cédula disponible';
-                e.target.setCustomValidity('');
+                elements.regCedulaNumero.setCustomValidity('');
             }
         } catch (error) {
             msgElement.style.display = 'none';
-            console.error('Error validando cédula:', error);
         }
     }, 500); // Espera 500ms después de que el usuario deja de escribir
 }
@@ -1197,8 +1298,6 @@ elements.regEdad.addEventListener('input', function(e) {
     }
 });
 
-console.log('✓ Validaciones en tiempo real activadas');
-
 
 // ===================================================
 // FUNCIONALIDAD DE FOTO CON COMPRESIÓN
@@ -1211,6 +1310,7 @@ const FOTO_QUALITY = 0.8; // Calidad de compresión (0-1) - WebP permite mayor c
 const USE_WEBP = true; // Usar WebP para mejor compresión (fallback a JPEG si no soportado)
 
 let cameraStream = null;
+let currentFacingMode = 'user'; // 'user' para frontal, 'environment' para trasera
 
 // Elementos de foto
 const fotoInput = document.getElementById('regFoto');
@@ -1229,6 +1329,7 @@ const cameraVideo = document.getElementById('cameraVideo');
 const cameraCanvas = document.getElementById('cameraCanvas');
 const captureFotoBtn = document.getElementById('captureFotoBtn');
 const cancelCameraBtn = document.getElementById('cancelCameraBtn');
+const switchCameraBtn = document.getElementById('switchCameraBtn');
 
 /**
  * Comprimir imagen a base64 usando WebP (o JPEG como fallback)
@@ -1283,9 +1384,6 @@ function compressImage(file) {
                 if (base64.length > MAX_FOTO_SIZE) {
                     reject(new Error('No se pudo comprimir la imagen lo suficiente. Por favor use una imagen más pequeña.'));
                 } else {
-                    const sizeKB = Math.round((base64.length * 3/4) / 1024);
-                    const formatName = format === 'image/webp' ? 'WebP' : 'JPEG';
-                    console.log(`✓ Foto comprimida en formato ${formatName}: ${sizeKB}KB (calidad: ${Math.round(quality * 100)}%)`);
                     resolve(base64);
                 }
             };
@@ -1309,8 +1407,6 @@ function compressImage(file) {
  * Mostrar vista previa de foto
  */
 function showFotoPreview(base64) {
-    console.log('📸 DEBUG - Mostrando preview, tamaño:', Math.round(base64.length / 1024), 'KB');
-    
     // Mostrar imagen
     fotoPreviewImg.src = base64;
     fotoPreview.style.display = 'block';
@@ -1326,15 +1422,12 @@ function showFotoPreview(base64) {
     setTimeout(() => {
         fotoPreview.style.animation = 'zoomIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
     }, 10);
-    
-    console.log('📸 DEBUG - Valor guardado en input hidden:', fotoBase64Input.value ? 'Sí' : 'No');
 }
 
 /**
  * Remover foto
  */
 function removeFoto() {
-    console.log('📸 DEBUG - Removiendo foto');
     fotoPreviewImg.src = '';
     fotoPreview.style.display = 'none';
     fotoBase64Input.value = '';
@@ -1389,26 +1482,47 @@ fotoInput.addEventListener('change', async function(e) {
 fotoRemoveBtn.addEventListener('click', removeFoto);
 
 /**
- * Abrir cámara
+ * Iniciar cámara con modo especificado
  */
-tomarFotoBtn.addEventListener('click', async function() {
+async function startCamera(facingMode) {
     try {
+        // Detener stream anterior si existe
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+        }
+        
         // Solicitar acceso a la cámara
         cameraStream = await navigator.mediaDevices.getUserMedia({
             video: {
-                facingMode: 'user', // 'environment' para cámara trasera
+                facingMode: facingMode,
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
             }
         });
         
         cameraVideo.srcObject = cameraStream;
-        cameraModal.classList.add('active');
+        currentFacingMode = facingMode;
+        
+        // Actualizar indicador visual del botón
+        if (facingMode === 'user') {
+            switchCameraBtn.className = 'btn-switch-camera frontal';
+            switchCameraBtn.title = 'Cambiar a cámara trasera';
+        } else {
+            switchCameraBtn.className = 'btn-switch-camera trasera';
+            switchCameraBtn.title = 'Cambiar a cámara frontal';
+        }
         
     } catch (error) {
-        console.error('Error al acceder a la cámara:', error);
         showError('No se pudo acceder a la cámara. Verifique los permisos del navegador.');
     }
+}
+
+/**
+ * Abrir cámara
+ */
+tomarFotoBtn.addEventListener('click', async function() {
+    await startCamera('user');
+    cameraModal.classList.add('active');
 });
 
 /**
@@ -1443,16 +1557,27 @@ captureFotoBtn.addEventListener('click', function() {
     
     // Mostrar vista previa
     showFotoPreview(base64);
-    
-    const finalSizeKB = Math.round((base64.length * 3/4) / 1024);
-    const formatName = format === 'image/webp' ? 'WebP' : 'JPEG';
-    console.log(`✓ Foto capturada y comprimida en ${formatName}: ${finalSizeKB}KB (calidad: ${Math.round(quality * 100)}%)`);
 });
 
 /**
  * Cancelar y cerrar cámara
  */
 cancelCameraBtn.addEventListener('click', closeCameraModal);
+
+/**
+ * Cambiar entre cámara frontal y trasera
+ */
+switchCameraBtn.addEventListener('click', async function() {
+    const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    
+    // Animación de rotación del botón
+    this.style.transform = 'scale(0.8) rotate(360deg)';
+    
+    setTimeout(async () => {
+        await startCamera(newFacingMode);
+        this.style.transform = '';
+    }, 200);
+});
 
 /**
  * Cerrar modal de cámara
@@ -1474,7 +1599,7 @@ cameraModal.addEventListener('click', function(e) {
     }
 });
 
-console.log('✓ Funcionalidad de foto con compresión WebP/JPEG activada');
+
 
 
 // ===================================================
@@ -1530,4 +1655,4 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-console.log('✓ Modal de visualización de fotos activado');
+

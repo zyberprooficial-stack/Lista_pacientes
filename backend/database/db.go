@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -194,12 +193,6 @@ func GetPacientes(ctx context.Context, page, limit int, nombre, cedula, ubicacio
 		if err != nil {
 			return nil, fmt.Errorf("error escaneando fila: %w", err)
 		}
-		// DEBUG: Log para verificar si foto existe
-		if p.Foto != nil {
-			log.Printf("✅ Paciente %d tiene foto (tamaño: %d bytes)", p.ID, len(*p.Foto))
-		} else {
-			log.Printf("❌ Paciente %d NO tiene foto", p.ID)
-		}
 		pacientes = append(pacientes, p)
 	}
 
@@ -282,11 +275,8 @@ func CreatePaciente(ctx context.Context, input *models.PacienteInput) (*models.P
 	// Convertir foto vacía a NULL para la base de datos
 	var fotoValue interface{}
 	if input.Foto == "" {
-		log.Printf("⚠️ DEBUG CreatePaciente: Foto vacía para paciente %s", input.NombreCompleto)
 		fotoValue = nil
 	} else {
-		fotoSize := len(input.Foto)
-		log.Printf("✅ DEBUG CreatePaciente: Guardando foto para %s (tamaño: %d bytes)", input.NombreCompleto, fotoSize)
 		fotoValue = input.Foto
 	}
 	
@@ -491,4 +481,32 @@ func GetParroquias(ctx context.Context, municipioID int) ([]Parroquia, error) {
 		parroquias = append(parroquias, p)
 	}
 	return parroquias, rows.Err()
+}
+
+// Stats representa las estadísticas del sistema
+type Stats struct {
+	Total       int `json:"total"`
+	Estable     int `json:"estable"`
+	Critico     int `json:"critico"`
+	Fallecido   int `json:"fallecido"`
+	Desconocido int `json:"desconocido"`
+}
+
+// GetStats obtiene estadísticas de pacientes por estado de salud
+func GetStats(ctx context.Context) (*Stats, error) {
+	query := `
+		SELECT
+			COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE estado_salud = 'Estable')     AS estable,
+			COUNT(*) FILTER (WHERE estado_salud = 'Critico')     AS critico,
+			COUNT(*) FILTER (WHERE estado_salud = 'Fallecido')   AS fallecido,
+			COUNT(*) FILTER (WHERE estado_salud = 'Desconocido') AS desconocido
+		FROM pacientes
+	`
+	var s Stats
+	err := db.QueryRowContext(ctx, query).Scan(&s.Total, &s.Estable, &s.Critico, &s.Fallecido, &s.Desconocido)
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo estadísticas: %w", err)
+	}
+	return &s, nil
 }
