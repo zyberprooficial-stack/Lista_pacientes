@@ -1,0 +1,41 @@
+=====================================================
+  CONVERTIR IMÁGENES A WEBP - INSTRUCCIONES RÁPIDAS
+=====================================================
+
+OPCIÓN MÁS RÁPIDA (2 minutos):
+-------------------------------
+
+1. Abre tu navegador y ve a:
+   https://cloudconvert.com/png-to-webp
+
+2. Arrastra estos archivos:
+   - frontend/1.png
+   - frontend/2.png
+
+3. Configura:
+   - Calidad: 85%
+   - Mantener dimensiones originales
+
+4. Descarga los archivos como:
+   - 1.webp
+   - 2.webp
+
+5. Colócalos en la carpeta: frontend/
+
+6. ¡Listo! El sitio ya está configurado para usarlos
+   (si no existen, usa PNG automáticamente como fallback)
+
+=====================================================
+
+BENEFICIOS:
+- Reduce tamaño de imágenes 50-70%
+- Carga más rápida del sitio
+- Mejor experiencia de usuario
+- Menor consumo de datos
+
+ARCHIVOS ACTUALIZADOS:
+✅ frontend/index.html - Ya usa <picture> con WebP
+✅ Fallback a PNG si WebP no existe
+✅ Compatible con todos los navegadores
+
+=====================================================
