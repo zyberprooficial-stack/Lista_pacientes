@@ -32,6 +32,9 @@ const cache = {
     parroquias: {}
 };
 
+// Fotos en memoria (evita incrustar base64 en atributos HTML)
+const pacienteFotos = new Map();
+
 // Elementos DOM (cacheados para performance)
 const elements = {
     // Navegación
@@ -61,7 +64,6 @@ const elements = {
     // Registro
     registerForm: document.getElementById('registerForm'),
     regNombre: document.getElementById('regNombre'),
-    regCedula: document.getElementById('regCedula'),
     regTelefono: document.getElementById('regTelefono'),
     regEdad: document.getElementById('regEdad'),
     regUbicacion: document.getElementById('regUbicacion'),
@@ -99,7 +101,7 @@ elements.prevBtn.addEventListener('click', () => changePage(currentPage - 1));
 elements.nextBtn.addEventListener('click', () => changePage(currentPage + 1));
 elements.pageSize.addEventListener('change', handlePageSizeChange);
 elements.loadMoreBtn.addEventListener('click', handleLoadMore);
-elements.resultsBody.addEventListener('click', handlePatientCardClick);
+elements.resultsBody.addEventListener('click', handleResultsBodyClick);
 
 // Event Listeners para dropdowns en cascada
 elements.regEstadoGeo.addEventListener('change', handleEstadoChange);
@@ -394,13 +396,26 @@ async function handleRegister(e) {
     hideError();
     hideSuccess();
     
+    // Obtener foto en base64 si existe
+    const fotoBase64Input = document.getElementById('regFotoBase64');
+    const fotoBase64 = fotoBase64Input ? fotoBase64Input.value : '';
+    
+    console.log('📸 DEBUG - Foto en formulario:', fotoBase64 ? `Sí (${Math.round(fotoBase64.length / 1024)}KB)` : 'No hay foto');
+    
+    // Construir la cédula completa (tipo + número)
+    const regCedulaTipo = document.getElementById('regCedulaTipo');
+    const regCedulaNumero = document.getElementById('regCedulaNumero');
+    const cedulaCompleta = regCedulaNumero && regCedulaNumero.value ? 
+        `${regCedulaTipo.value}${regCedulaNumero.value}` : '';
+    
     const paciente = {
         nombre_completo: elements.regNombre.value.trim(),
-        cedula: elements.regCedula.value.trim().toUpperCase(),
+        cedula: cedulaCompleta,
         telefono: elements.regTelefono.value.trim(),
         edad: parseInt(elements.regEdad.value) || 0,
         ubicacion_actual: elements.regUbicacion.value.trim(),
         estado_salud: elements.regEstadoSalud.value,
+        foto: fotoBase64,
         estado_id: parseInt(elements.regEstadoGeo.value),
         municipio_id: parseInt(elements.regMunicipio.value),
         parroquia_id: parseInt(elements.regParroquia.value)
@@ -447,6 +462,11 @@ async function handleRegister(e) {
     
     showLoading();
     
+    console.log('📤 DEBUG - Enviando paciente al servidor:', {
+        ...paciente,
+        foto: paciente.foto ? `[Base64 ${Math.round(paciente.foto.length / 1024)}KB]` : 'Sin foto'
+    });
+    
     try {
         const response = await fetch(`${API_BASE_URL}/pacientes/create`, {
             method: 'POST',
@@ -456,7 +476,11 @@ async function handleRegister(e) {
             body: JSON.stringify(paciente)
         });
         
+        console.log('📥 DEBUG - Respuesta del servidor:', response.status);
+        
         const data = await response.json();
+        
+        console.log('📥 DEBUG - Datos recibidos:', data);
         
         if (!response.ok) {
             // Mostrar detalles de validación si están disponibles
@@ -513,6 +537,21 @@ function handleLoadMore() {
     if (!lastPagination || currentPage >= lastPagination.total_pages) return;
     currentPage += 1;
     loadPacientes(true);
+}
+
+function handleResultsBodyClick(e) {
+    const photoImg = e.target.closest('.patient-photo-thumb');
+    if (photoImg) {
+        e.stopPropagation();
+        const id = parseInt(photoImg.dataset.pacienteId, 10);
+        const data = pacienteFotos.get(id);
+        if (data) {
+            showPhotoModal(data.foto, data.nombre);
+        }
+        return;
+    }
+
+    handlePatientCardClick(e);
 }
 
 function handlePatientCardClick(e) {
@@ -612,7 +651,7 @@ function formatPacienteFields(paciente) {
         minute: '2-digit'
     });
     const estadoClass = `estado-${paciente.estado_salud.toLowerCase()}`;
-
+    
     return {
         nombre: escapeHtml(paciente.nombre_completo),
         cedula: paciente.cedula ? escapeHtml(paciente.cedula) : '<em class="na-value">Sin cédula</em>',
@@ -628,10 +667,36 @@ function formatPacienteFields(paciente) {
     };
 }
 
+function createPhotoElement(paciente) {
+    if (!paciente.foto) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'patient-photo-placeholder';
+        placeholder.textContent = '👤';
+        return placeholder;
+    }
+
+    pacienteFotos.set(paciente.id, {
+        foto: paciente.foto,
+        nombre: paciente.nombre_completo
+    });
+
+    const img = document.createElement('img');
+    img.src = paciente.foto;
+    img.alt = `Foto de ${paciente.nombre_completo}`;
+    img.className = 'patient-photo-thumb';
+    img.dataset.pacienteId = String(paciente.id);
+    return img;
+}
+
 function createDesktopRow(paciente) {
     const f = formatPacienteFields(paciente);
     const tr = document.createElement('tr');
-    tr.innerHTML = `
+    const tdPhoto = document.createElement('td');
+    tdPhoto.dataset.label = 'Foto';
+    tdPhoto.className = 'cell-photo';
+    tdPhoto.appendChild(createPhotoElement(paciente));
+    tr.appendChild(tdPhoto);
+    tr.insertAdjacentHTML('beforeend', `
         <td data-label="Nombre">${f.nombre}</td>
         <td data-label="Cédula"><strong>${f.cedula}</strong></td>
         <td data-label="Edad">${f.edad}</td>
@@ -642,7 +707,7 @@ function createDesktopRow(paciente) {
         <td data-label="Ubicación">${f.ubicacion}</td>
         <td data-label="Estado de Salud"><span class="${f.estadoClass}">${f.estadoSalud}</span></td>
         <td data-label="Fecha" class="cell-fecha">${f.fechaFormateada}</td>
-    `;
+    `);
     return tr;
 }
 
@@ -651,15 +716,20 @@ function createMobileCardRow(paciente) {
     const tr = document.createElement('tr');
     tr.className = 'patient-card';
     tr.innerHTML = `
-        <td colspan="10" class="patient-card-cell">
+        <td colspan="11" class="patient-card-cell">
             <button type="button" class="patient-card-header" aria-expanded="false">
-                <div class="patient-card-top">
-                    <span class="patient-card-name">${f.nombre}</span>
-                    <span class="${f.estadoClass}">${f.estadoSalud}</span>
-                </div>
-                <div class="patient-card-summary">
-                    <span class="summary-item"><strong>Cédula:</strong> ${f.cedula}</span>
-                    <span class="summary-item"><strong>Ubicación:</strong> ${f.ubicacion}</span>
+                <div class="patient-card-photo-section">
+                    <div class="patient-card-photo-slot"></div>
+                    <div class="patient-card-info">
+                        <div class="patient-card-top">
+                            <span class="patient-card-name">${f.nombre}</span>
+                            <span class="${f.estadoClass}">${f.estadoSalud}</span>
+                        </div>
+                        <div class="patient-card-summary">
+                            <span class="summary-item"><strong>Cédula:</strong> ${f.cedula}</span>
+                            <span class="summary-item"><strong>Ubicación:</strong> ${f.ubicacion}</span>
+                        </div>
+                    </div>
                 </div>
                 <span class="patient-card-toggle">Ver detalles ▼</span>
             </button>
@@ -673,6 +743,10 @@ function createMobileCardRow(paciente) {
             </div>
         </td>
     `;
+    const photoSlot = tr.querySelector('.patient-card-photo-slot');
+    if (photoSlot) {
+        photoSlot.replaceWith(createPhotoElement(paciente));
+    }
     return tr;
 }
 
@@ -696,6 +770,7 @@ function renderResults(data, append = false) {
     
     if (!append) {
         tbody.innerHTML = '';
+        pacienteFotos.clear();
     }
     
     displayedCount += data.data.length;
@@ -714,7 +789,7 @@ function renderResults(data, append = false) {
 function renderNoResults(message) {
     elements.resultsBody.innerHTML = `
         <tr>
-            <td colspan="10" class="no-results">${escapeHtml(message)}</td>
+            <td colspan="11" class="no-results">${escapeHtml(message)}</td>
         </tr>
     `;
     elements.pagination.style.display = 'none';
@@ -1023,3 +1098,436 @@ if (typeof module !== 'undefined' && module.exports) {
         debounce
     };
 }
+
+
+// ===================================================
+// VALIDACIONES EN TIEMPO REAL
+// ===================================================
+
+// Validación de nombre: solo letras y convertir a mayúsculas
+elements.regNombre.addEventListener('input', function(e) {
+    // Eliminar números y caracteres especiales (excepto letras, espacios y acentos)
+    let value = e.target.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g, '');
+    
+    // Convertir a mayúsculas
+    value = value.toUpperCase();
+    
+    // Limitar a 50 caracteres
+    if (value.length > 50) {
+        value = value.substring(0, 50);
+    }
+    
+    e.target.value = value;
+});
+
+// Validación de cédula: solo números y validación de duplicación
+let cedulaTimeout;
+elements.regCedulaNumero = document.getElementById('regCedulaNumero');
+elements.regCedulaTipo = document.getElementById('regCedulaTipo');
+
+function validateCedulaNumber(e) {
+    // Solo permitir números
+    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    
+    // Validar longitud (6-9 dígitos)
+    const numero = e.target.value;
+    const tipo = elements.regCedulaTipo.value;
+    const msgElement = document.getElementById('cedulaValidationMsg');
+    
+    if (numero.length < 6 || numero.length > 9) {
+        msgElement.style.display = 'block';
+        msgElement.style.color = '#f59e0b';
+        msgElement.textContent = 'La cédula debe tener entre 6 y 9 dígitos';
+        return;
+    }
+    
+    // Validar duplicación en tiempo real (con debounce)
+    clearTimeout(cedulaTimeout);
+    cedulaTimeout = setTimeout(async () => {
+        const cedulaCompleta = tipo + numero;
+        
+        try {
+            msgElement.style.display = 'block';
+            msgElement.style.color = '#94a3b8';
+            msgElement.textContent = '🔍 Verificando cédula...';
+            
+            const response = await fetch(`${API_BASE_URL}/pacientes?cedula=${encodeURIComponent(cedulaCompleta)}&limit=1`);
+            const data = await response.json();
+            
+            if (data.data && data.data.length > 0) {
+                msgElement.style.color = '#f43f5e';
+                msgElement.textContent = '⚠️ Esta cédula ya está registrada';
+                e.target.setCustomValidity('Cédula duplicada');
+            } else {
+                msgElement.style.color = '#10b981';
+                msgElement.textContent = '✓ Cédula disponible';
+                e.target.setCustomValidity('');
+            }
+        } catch (error) {
+            msgElement.style.display = 'none';
+            console.error('Error validando cédula:', error);
+        }
+    }, 500); // Espera 500ms después de que el usuario deja de escribir
+}
+
+elements.regCedulaNumero.addEventListener('input', validateCedulaNumber);
+elements.regCedulaTipo.addEventListener('change', validateCedulaNumber);
+
+// Validación de teléfono: solo números y guiones
+elements.regTelefono.addEventListener('input', function(e) {
+    // Solo permitir números y guiones
+    let value = e.target.value.replace(/[^0-9\-]/g, '');
+    
+    // Limitar a 15 caracteres
+    if (value.length > 15) {
+        value = value.substring(0, 15);
+    }
+    
+    e.target.value = value;
+});
+
+// Validación de edad: límite 0-120
+elements.regEdad.addEventListener('input', function(e) {
+    const value = parseInt(e.target.value);
+    
+    if (value < 0) {
+        e.target.value = 0;
+    } else if (value > 120) {
+        e.target.value = 120;
+    }
+});
+
+console.log('✓ Validaciones en tiempo real activadas');
+
+
+// ===================================================
+// FUNCIONALIDAD DE FOTO CON COMPRESIÓN
+// ===================================================
+
+const MAX_FOTO_SIZE = 200 * 1024; // 200KB máximo
+const MAX_FOTO_WIDTH = 800; // Ancho máximo en píxeles
+const MAX_FOTO_HEIGHT = 800; // Alto máximo en píxeles
+const FOTO_QUALITY = 0.8; // Calidad de compresión (0-1) - WebP permite mayor calidad con menor tamaño
+const USE_WEBP = true; // Usar WebP para mejor compresión (fallback a JPEG si no soportado)
+
+let cameraStream = null;
+
+// Elementos de foto
+const fotoInput = document.getElementById('regFoto');
+const fotoPreview = document.getElementById('fotoPreview');
+const fotoPreviewImg = document.getElementById('fotoPreviewImg');
+const fotoRemoveBtn = document.getElementById('fotoRemoveBtn');
+const fotoBase64Input = document.getElementById('regFotoBase64');
+const tomarFotoBtn = document.getElementById('tomarFotoBtn');
+const fotoUploadContainer = document.getElementById('fotoUploadContainer');
+const fotoInfo = document.getElementById('fotoInfo');
+const fotoSize = document.getElementById('fotoSize');
+
+// Modal de cámara
+const cameraModal = document.getElementById('cameraModal');
+const cameraVideo = document.getElementById('cameraVideo');
+const cameraCanvas = document.getElementById('cameraCanvas');
+const captureFotoBtn = document.getElementById('captureFotoBtn');
+const cancelCameraBtn = document.getElementById('cancelCameraBtn');
+
+/**
+ * Comprimir imagen a base64 usando WebP (o JPEG como fallback)
+ */
+function compressImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const img = new Image();
+            
+            img.onload = function() {
+                // Calcular nuevas dimensiones manteniendo aspect ratio
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > height) {
+                    if (width > MAX_FOTO_WIDTH) {
+                        height = height * (MAX_FOTO_WIDTH / width);
+                        width = MAX_FOTO_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_FOTO_HEIGHT) {
+                        width = width * (MAX_FOTO_HEIGHT / height);
+                        height = MAX_FOTO_HEIGHT;
+                    }
+                }
+                
+                // Crear canvas y dibujar imagen redimensionada
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Detectar soporte de WebP
+                const format = USE_WEBP && canvas.toDataURL('image/webp').startsWith('data:image/webp') 
+                    ? 'image/webp' 
+                    : 'image/jpeg';
+                
+                // Comprimir y convertir a base64
+                let quality = FOTO_QUALITY;
+                let base64 = canvas.toDataURL(format, quality);
+                
+                // Si aún es muy grande, reducir calidad iterativamente
+                while (base64.length > MAX_FOTO_SIZE && quality > 0.1) {
+                    quality -= 0.05; // Pasos más pequeños para WebP
+                    base64 = canvas.toDataURL(format, quality);
+                }
+                
+                if (base64.length > MAX_FOTO_SIZE) {
+                    reject(new Error('No se pudo comprimir la imagen lo suficiente. Por favor use una imagen más pequeña.'));
+                } else {
+                    const sizeKB = Math.round((base64.length * 3/4) / 1024);
+                    const formatName = format === 'image/webp' ? 'WebP' : 'JPEG';
+                    console.log(`✓ Foto comprimida en formato ${formatName}: ${sizeKB}KB (calidad: ${Math.round(quality * 100)}%)`);
+                    resolve(base64);
+                }
+            };
+            
+            img.onerror = function() {
+                reject(new Error('Error al cargar la imagen'));
+            };
+            
+            img.src = e.target.result;
+        };
+        
+        reader.onerror = function() {
+            reject(new Error('Error al leer el archivo'));
+        };
+        
+        reader.readAsDataURL(file);
+    });
+}
+
+/**
+ * Mostrar vista previa de foto
+ */
+function showFotoPreview(base64) {
+    console.log('📸 DEBUG - Mostrando preview, tamaño:', Math.round(base64.length / 1024), 'KB');
+    
+    // Mostrar imagen
+    fotoPreviewImg.src = base64;
+    fotoPreview.style.display = 'block';
+    fotoBase64Input.value = base64;
+    
+    // Mostrar información de tamaño
+    const sizeKB = Math.round((base64.length * 3/4) / 1024);
+    fotoSize.textContent = `${sizeKB} KB`;
+    fotoInfo.style.display = 'block';
+    
+    // Añadir animación de éxito
+    fotoPreview.style.animation = 'none';
+    setTimeout(() => {
+        fotoPreview.style.animation = 'zoomIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    }, 10);
+    
+    console.log('📸 DEBUG - Valor guardado en input hidden:', fotoBase64Input.value ? 'Sí' : 'No');
+}
+
+/**
+ * Remover foto
+ */
+function removeFoto() {
+    console.log('📸 DEBUG - Removiendo foto');
+    fotoPreviewImg.src = '';
+    fotoPreview.style.display = 'none';
+    fotoBase64Input.value = '';
+    fotoInput.value = '';
+    fotoInfo.style.display = 'none';
+    fotoSize.textContent = '0 KB';
+}
+
+/**
+ * Manejar selección de archivo
+ */
+fotoInput.addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    
+    if (!file) return;
+    
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+        showError('Por favor seleccione un archivo de imagen válido');
+        return;
+    }
+    
+    // Validar tamaño antes de comprimir (máx 10MB original)
+    if (file.size > 10 * 1024 * 1024) {
+        showError('La imagen es demasiado grande. Por favor seleccione una imagen menor a 10MB');
+        return;
+    }
+    
+    try {
+        // Mostrar estado de carga
+        fotoUploadContainer.classList.add('loading');
+        showLoading();
+        
+        const base64 = await compressImage(file);
+        
+        hideLoading();
+        fotoUploadContainer.classList.remove('loading');
+        
+        showFotoPreview(base64);
+        
+    } catch (error) {
+        hideLoading();
+        fotoUploadContainer.classList.remove('loading');
+        showError(error.message);
+        removeFoto();
+    }
+});
+
+/**
+ * Remover foto al hacer clic en botón X
+ */
+fotoRemoveBtn.addEventListener('click', removeFoto);
+
+/**
+ * Abrir cámara
+ */
+tomarFotoBtn.addEventListener('click', async function() {
+    try {
+        // Solicitar acceso a la cámara
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'user', // 'environment' para cámara trasera
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        });
+        
+        cameraVideo.srcObject = cameraStream;
+        cameraModal.classList.add('active');
+        
+    } catch (error) {
+        console.error('Error al acceder a la cámara:', error);
+        showError('No se pudo acceder a la cámara. Verifique los permisos del navegador.');
+    }
+});
+
+/**
+ * Capturar foto de la cámara
+ */
+captureFotoBtn.addEventListener('click', function() {
+    // Configurar canvas con las dimensiones del video
+    cameraCanvas.width = cameraVideo.videoWidth;
+    cameraCanvas.height = cameraVideo.videoHeight;
+    
+    // Dibujar frame actual del video en el canvas
+    const ctx = cameraCanvas.getContext('2d');
+    ctx.drawImage(cameraVideo, 0, 0);
+    
+    // Detectar soporte de WebP
+    const format = USE_WEBP && cameraCanvas.toDataURL('image/webp').startsWith('data:image/webp') 
+        ? 'image/webp' 
+        : 'image/jpeg';
+    
+    // Convertir a base64 y comprimir
+    let base64 = cameraCanvas.toDataURL(format, FOTO_QUALITY);
+    
+    // Si es muy grande, comprimir más
+    let quality = FOTO_QUALITY;
+    while (base64.length > MAX_FOTO_SIZE && quality > 0.1) {
+        quality -= 0.05;
+        base64 = cameraCanvas.toDataURL(format, quality);
+    }
+    
+    // Cerrar cámara
+    closeCameraModal();
+    
+    // Mostrar vista previa
+    showFotoPreview(base64);
+    
+    const finalSizeKB = Math.round((base64.length * 3/4) / 1024);
+    const formatName = format === 'image/webp' ? 'WebP' : 'JPEG';
+    console.log(`✓ Foto capturada y comprimida en ${formatName}: ${finalSizeKB}KB (calidad: ${Math.round(quality * 100)}%)`);
+});
+
+/**
+ * Cancelar y cerrar cámara
+ */
+cancelCameraBtn.addEventListener('click', closeCameraModal);
+
+/**
+ * Cerrar modal de cámara
+ */
+function closeCameraModal() {
+    cameraModal.classList.remove('active');
+    
+    // Detener stream de cámara
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+}
+
+// Cerrar modal al hacer clic fuera del contenido
+cameraModal.addEventListener('click', function(e) {
+    if (e.target === cameraModal) {
+        closeCameraModal();
+    }
+});
+
+console.log('✓ Funcionalidad de foto con compresión WebP/JPEG activada');
+
+
+// ===================================================
+// MODAL DE VISUALIZACIÓN DE FOTO
+// ===================================================
+
+/**
+ * Mostrar foto en modal
+ */
+function showPhotoModal(photoSrc, patientName) {
+    const modal = document.getElementById('photoViewModal');
+    const img = document.getElementById('photoModalImage');
+    const title = document.getElementById('photoModalTitle');
+    
+    if (!photoSrc) {
+        showError('Esta persona no tiene foto registrada');
+        return;
+    }
+    
+    img.src = photoSrc;
+    title.textContent = `Foto de ${patientName}`;
+    modal.classList.add('active');
+    
+    // Prevenir scroll del body
+    document.body.style.overflow = 'hidden';
+}
+
+/**
+ * Cerrar modal de foto
+ */
+function closePhotoModal() {
+    const modal = document.getElementById('photoViewModal');
+    modal.classList.remove('active');
+    
+    // Restaurar scroll del body
+    document.body.style.overflow = '';
+}
+
+// Cerrar modal al hacer clic fuera de la imagen
+document.getElementById('photoViewModal').addEventListener('click', function(e) {
+    if (e.target.id === 'photoViewModal') {
+        closePhotoModal();
+    }
+});
+
+// Cerrar modal con tecla ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('photoViewModal');
+        if (modal.classList.contains('active')) {
+            closePhotoModal();
+        }
+    }
+});
+
+console.log('✓ Modal de visualización de fotos activado');

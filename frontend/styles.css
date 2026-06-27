@@ -93,7 +93,7 @@ body {
 /* Header - Medical Emergency Theme */
 .header {
     text-align: center;
-    padding: 40px 32px;
+    padding: 32px 32px 28px;
     background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
@@ -116,11 +116,37 @@ body {
     pointer-events: none;
 }
 
+.header-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: -2px;
+    position: relative;
+}
+
+.logo-image {
+    width: 320px;
+    height: auto;
+    object-fit: contain;
+    animation: logoFloat 3s ease-in-out infinite;
+    position: relative;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+@keyframes logoFloat {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
 .header h1 {
     font-size: 32px;
     font-weight: 700;
     color: white;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     letter-spacing: -0.025em;
     position: relative;
 }
@@ -159,6 +185,24 @@ body {
     box-sizing: border-box;
     word-break: break-word;
     overflow-wrap: break-word;
+    position: relative;
+}
+
+.action-card-logo {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    opacity: 0.2;
+    transition: all var(--transition-base);
+}
+
+.action-card:hover .action-card-logo,
+.action-card.active .action-card-logo {
+    opacity: 0.4;
+    transform: scale(1.1);
 }
 
 .action-card:hover {
@@ -676,85 +720,93 @@ body {
     background: var(--slate-100);
 }
 
-/* Anchos de columna optimizados */
-.results-table th:nth-child(1), /* Nombre */
+/* Anchos de columna optimizados CON FOTO */
+.results-table th:nth-child(1), /* Foto */
 .results-table td:nth-child(1) {
-    width: 15%;
-    white-space: nowrap !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
+    width: 70px;
+    min-width: 70px;
+    text-align: center;
 }
 
-.results-table th:nth-child(2), /* Cédula */
+.results-table th:nth-child(2), /* Nombre */
 .results-table td:nth-child(2) {
-    width: 10%;
+    width: 14%;
     white-space: nowrap !important;
     overflow: visible !important;
     text-overflow: clip !important;
 }
 
-.results-table th:nth-child(3), /* Edad */
+.results-table th:nth-child(3), /* Cédula */
 .results-table td:nth-child(3) {
+    width: 9%;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.results-table th:nth-child(4), /* Edad */
+.results-table td:nth-child(4) {
     width: 5%;
     white-space: nowrap !important;
 }
 
-.results-table th:nth-child(4), /* Teléfono */
-.results-table td:nth-child(4) {
-    width: 10%;
+.results-table th:nth-child(5), /* Teléfono */
+.results-table td:nth-child(5) {
+    width: 9%;
     white-space: nowrap !important;
 }
 
-.results-table th:nth-child(5), /* Estado */
-.results-table td:nth-child(5) {
+.results-table th:nth-child(6), /* Estado */
+.results-table td:nth-child(6) {
     width: 8%;
     white-space: nowrap !important;
 }
 
-.results-table th:nth-child(6), /* Municipio */
-.results-table td:nth-child(6) {
-    width: 9%;
-    white-space: nowrap !important;
-}
-
-.results-table th:nth-child(7), /* Parroquia */
+.results-table th:nth-child(7), /* Municipio */
 .results-table td:nth-child(7) {
-    width: 9%;
+    width: 8%;
     white-space: nowrap !important;
 }
 
-.results-table th:nth-child(8), /* Ubicación Actual */
+.results-table th:nth-child(8), /* Parroquia */
 .results-table td:nth-child(8) {
-    width: 18%;
+    width: 8%;
+    white-space: nowrap !important;
+}
+
+.results-table th:nth-child(9), /* Ubicación Actual */
+.results-table td:nth-child(9) {
+    width: 16%;
     white-space: normal !important;
     word-wrap: break-word;
     overflow-wrap: break-word;
     line-height: 1.4;
 }
 
-.results-table th:nth-child(9), /* Estado de Salud */
-.results-table td:nth-child(9) {
-    width: 11%;
+.results-table th:nth-child(10), /* Estado de Salud */
+.results-table td:nth-child(10) {
+    width: 10%;
     white-space: nowrap !important;
     overflow: visible !important;
     text-overflow: clip !important;
 }
 
-.results-table th:nth-child(10), /* Fecha */
-.results-table td:nth-child(10) {
-    width: 10%;
+.results-table th:nth-child(11), /* Fecha */
+.results-table td:nth-child(11) {
+    width: 9%;
 }
 
 .results-table td {
-    padding: 12px 10px; /* Reducido de 20px a 12px vertical y 10px horizontal */
+    padding: 14px 12px;
     border-bottom: 1px solid var(--slate-200);
     color: var(--slate-700);
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
+    vertical-align: middle;
 }
 
-.results-table td:first-child {
+.results-table td:nth-child(2) {
     font-weight: 700;
     color: var(--slate-900);
     font-size: 15px;
@@ -766,7 +818,7 @@ body {
 
 .results-table tbody tr:hover {
     background: var(--slate-50);
-    box-shadow: inset 0 0 0 1px var(--slate-200);
+    box-shadow: inset 0 0 0 1px var(--primary-light);
 }
 
 .results-table tbody tr:last-child td {
@@ -1086,10 +1138,19 @@ body {
     }
 
     .header {
-        padding: 24px 16px;
+        padding: 16px 16px 14px;
         border-radius: var(--radius-md);
         margin-left: 0;
         margin-right: 0;
+    }
+
+    .header-logo {
+        margin-bottom: 8px;
+    }
+
+    .logo-image {
+        width: 200px;
+        height: auto;
     }
 
     .header h1 {
@@ -1708,4 +1769,492 @@ input.pac-target-input:focus {
 
 .osm-suggestions-container::-webkit-scrollbar-thumb:hover {
     background: var(--slate-400);
+}
+
+
+/* Validación de cédula en tiempo real */
+#cedulaValidationMsg {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 4px;
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    transition: all 0.2s ease;
+}
+
+/* Estilos para campos de cédula */
+.input-group > div {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+.input-group > div select {
+    flex-shrink: 0;
+}
+
+.input-group > div input {
+    flex: 1;
+    min-width: 0;
+}
+
+
+/* =====================================================
+   Campo de Foto - Upload y Cámara MEJORADO
+   ===================================================== */
+
+.foto-upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px;
+    background: linear-gradient(135deg, var(--slate-50) 0%, white 100%);
+    border: 2px dashed var(--slate-300);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-base);
+}
+
+.foto-upload-container:hover {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, var(--primary-light) 0%, white 100%);
+    box-shadow: var(--shadow-sm);
+}
+
+.foto-upload-container.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.foto-preview {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    margin: 0 auto;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    border: 3px solid var(--primary);
+    background: var(--slate-100);
+    transition: all var(--transition-base);
+}
+
+.foto-preview:hover {
+    transform: scale(1.02);
+    box-shadow: var(--shadow-xl);
+}
+
+.foto-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-slow);
+}
+
+.foto-preview:hover img {
+    transform: scale(1.05);
+}
+
+.foto-remove-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    background: var(--status-critical);
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+    transition: all var(--transition-base);
+    z-index: 10;
+}
+
+.foto-remove-btn:hover {
+    background: #dc2626;
+    transform: scale(1.15) rotate(90deg);
+}
+
+.foto-remove-btn:active {
+    transform: scale(1) rotate(90deg);
+}
+
+.foto-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.foto-btn {
+    flex: 1;
+    min-width: 160px;
+    max-width: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 15px;
+    padding: 12px 20px;
+}
+
+/* Indicador de tamaño de foto */
+.foto-info {
+    text-align: center;
+    font-size: 12px;
+    color: var(--slate-600);
+    font-weight: 600;
+    padding: 8px 12px;
+    background: var(--slate-100);
+    border-radius: var(--radius-md);
+    margin-top: -8px;
+}
+
+/* Modal de Cámara - MEJORADO */
+#cameraModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+#cameraModal.active {
+    display: flex;
+}
+
+.camera-container {
+    position: relative;
+    max-width: 720px;
+    width: 90%;
+    animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#cameraVideo {
+    width: 100%;
+    border-radius: var(--radius-xl);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    border: 3px solid var(--primary);
+}
+
+.camera-controls {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+.camera-controls button {
+    padding: 16px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 768px) {
+    .camera-container {
+        width: 95%;
+    }
+    
+    .camera-controls {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .camera-controls button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .foto-upload-container {
+        padding: 16px;
+    }
+    
+    .foto-buttons {
+        flex-direction: column;
+    }
+    
+    .foto-btn {
+        max-width: 100%;
+        min-width: 100%;
+    }
+    
+    .foto-preview {
+        width: 220px;
+        height: 220px;
+    }
+}
+
+@media (max-width: 480px) {
+    .foto-preview {
+        width: 180px;
+        height: 180px;
+    }
+    
+    .foto-remove-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+}
+
+/* =====================================================
+   FOTOS DE PACIENTES
+   ===================================================== */
+
+/* Miniatura de foto en tabla - MEJORADA */
+.patient-photo-thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    cursor: pointer;
+    border: 2px solid var(--slate-200);
+    transition: all var(--transition-base);
+    box-shadow: var(--shadow-sm);
+    display: inline-block;
+    position: relative;
+}
+
+.patient-photo-thumb::after {
+    content: '🔍';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 20px;
+    opacity: 0;
+    transition: all var(--transition-base);
+    background: rgba(79, 70, 229, 0.9);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+}
+
+.patient-photo-thumb:hover {
+    transform: scale(1.2);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+}
+
+.patient-photo-thumb:hover::after {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* Placeholder cuando no hay foto - MEJORADO */
+.patient-photo-placeholder {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--slate-100) 0%, var(--slate-50) 100%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: var(--slate-400);
+    border: 2px dashed var(--slate-300);
+}
+
+/* Celda de foto */
+.cell-photo {
+    width: 70px !important;
+    min-width: 70px !important;
+    padding: 10px !important;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* Sección de foto en tarjetas móviles */
+.patient-card-photo-section {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.patient-card-photo-section .patient-photo-thumb {
+    flex-shrink: 0;
+}
+
+.patient-card-photo-section .patient-photo-placeholder {
+    flex-shrink: 0;
+}
+
+.patient-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Modal para ver foto completa - MEJORADO */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+    background: var(--status-critical);
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+    transition: all var(--transition-base);
+    z-index: 10;
+}
+
+.modal-close:hover {
+    background: #dc2626;
+    transform: scale(1.1) rotate(90deg);
+}
+
+.photo-modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: auto;
+    padding: 32px;
+    background: white;
+    border-radius: var(--radius-xl);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+    animation: zoomIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes zoomIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.photo-modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--slate-900);
+    margin-bottom: 20px;
+    text-align: center;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--slate-200);
+}
+
+.photo-modal-image-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, var(--slate-50) 0%, white 100%);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    max-height: 70vh;
+    overflow: hidden;
+}
+
+.photo-modal-image-container img {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xl);
+    border: 3px solid var(--primary);
+}
+
+/* Responsive para fotos */
+@media (max-width: 768px) {
+    .patient-photo-thumb,
+    .patient-photo-placeholder {
+        width: 60px;
+        height: 60px;
+    }
+
+    .patient-photo-placeholder {
+        font-size: 32px;
+    }
+
+    .photo-modal-content {
+        padding: 16px;
+        max-width: 95vw;
+        max-height: 95vh;
+    }
+
+    .photo-modal-title {
+        font-size: 18px;
+        margin-bottom: 12px;
+    }
+
+    .photo-modal-image-container {
+        padding: 12px;
+        max-height: 75vh;
+    }
+
+    .photo-modal-image-container img {
+        max-height: 75vh;
+    }
+}
+
+@media (max-width: 480px) {
+    .patient-photo-thumb,
+    .patient-photo-placeholder {
+        width: 52px;
+        height: 52px;
+    }
+    
+    .patient-photo-placeholder {
+        font-size: 26px;
+    }
 }

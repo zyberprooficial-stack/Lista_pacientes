@@ -14,6 +14,7 @@ type Paciente struct {
 	Edad            *int      `json:"edad"` // Edad opcional
 	UbicacionActual string    `json:"ubicacion_actual"`
 	EstadoSalud     string    `json:"estado_salud"`
+	Foto            *string   `json:"foto"` // Foto en base64, opcional (sin omitempty para siempre incluirla)
 	FechaRegistro   time.Time `json:"fecha_registro"`
 	Estado          *string   `json:"estado,omitempty"`
 	Municipio       *string   `json:"municipio,omitempty"`
@@ -28,6 +29,7 @@ type PacienteInput struct {
 	Edad            int    `json:"edad"`
 	UbicacionActual string `json:"ubicacion_actual"`
 	EstadoSalud     string `json:"estado_salud"`
+	Foto            string `json:"foto"` // Foto en base64
 	EstadoID        int    `json:"estado_id"`
 	MunicipioID     int    `json:"municipio_id"`
 	ParroquiaID     int    `json:"parroquia_id"`

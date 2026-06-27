@@ -7,7 +7,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta name="description" content="Sistema de consulta de pacientes afectados por terremoto en Venezuela">
-    <title>Sistema de Emergencia - Consulta de Pacientes</title>
+    <title>Localizavey - Sistema de Localización de Pacientes</title>
+    <link rel="icon" type="image/png" href="2.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -17,13 +18,17 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1>🏥 Sistema de Emergencia Médica</h1>
-            <p class="subtitle">Registro de Pacientes - Terremoto Venezuela</p>
+            <div class="header-logo">
+                <img src="2.png" alt="Localizavey Logo" class="logo-image">
+            </div>
+            <h1>Localizave</h1>
+            <p class="subtitle">Sistema de Localización de Pacientes - Venezuela</p>
         </header>
 
         <!-- Acciones Rápidas -->
         <div class="action-cards">
             <button id="showSearchBtn" class="action-card active">
+                <img src="2.png" alt="Logo" class="action-card-logo">
                 <span class="action-icon">🔍</span>
                 <div>
                     <h3>Buscar Pacientes</h3>
@@ -155,22 +160,34 @@
                         <input 
                             type="text" 
                             id="regNombre" 
-                            placeholder="Nombre y apellido completo"
+                            placeholder="NOMBRE Y APELLIDO COMPLETO"
                             required
-                            maxlength="200"
+                            maxlength="50"
+                            pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+"
+                            title="Solo letras, máximo 50 caracteres"
+                            style="text-transform: uppercase;"
                         >
+                        <small class="input-hint">Solo letras, máximo 50 caracteres (se convierte a mayúsculas automáticamente)</small>
                     </div>
                     
                     <div class="input-group">
                         <label for="regCedula">Cédula</label>
-                        <input 
-                            type="text" 
-                            id="regCedula" 
-                            placeholder="V12345678 o E12345678 (opcional)"
-                            pattern="[VE][0-9]{6,8}"
-                            maxlength="20"
-                        >
-                        <small class="input-hint">Formato: V o E seguido de 6-8 dígitos (opcional)</small>
+                        <div style="display: flex; gap: 8px;">
+                            <select id="regCedulaTipo" class="select-input" style="width: 70px;">
+                                <option value="V">V</option>
+                                <option value="E">E</option>
+                            </select>
+                            <input 
+                                type="text" 
+                                id="regCedulaNumero" 
+                                placeholder="1234567 (6-9 dígitos)"
+                                pattern="[0-9]{6,9}"
+                                maxlength="9"
+                                style="flex: 1;"
+                            >
+                        </div>
+                        <small class="input-hint">Formato: V o E seguido de 6-9 dígitos (se valida duplicación en tiempo real)</small>
+                        <small id="cedulaValidationMsg" style="display: none; margin-top: 4px;"></small>
                     </div>
                     
                     <div class="input-group">
@@ -179,9 +196,10 @@
                             type="tel" 
                             id="regTelefono" 
                             placeholder="0414-1234567 (opcional)"
-                            maxlength="20"
+                            maxlength="15"
+                            pattern="[0-9\-]+"
                         >
-                        <small class="input-hint">Número de contacto del paciente o familiar</small>
+                        <small class="input-hint">Máximo 15 caracteres (solo números y guiones)</small>
                     </div>
                     
                     <div class="input-group">
@@ -191,9 +209,9 @@
                             id="regEdad" 
                             placeholder="Edad en años (opcional)"
                             min="0"
-                            max="150"
+                            max="120"
                         >
-                        <small class="input-hint">Edad del paciente (0-150 años)</small>
+                        <small class="input-hint">Edad del paciente (0-120 años)</small>
                     </div>
                     
                     <div class="input-group">
@@ -215,6 +233,35 @@
                         <select id="regParroquia" class="select-input" required disabled>
                             <option value="">Primero seleccione un municipio</option>
                         </select>
+                    </div>
+                    
+                    <div class="input-group full-width">
+                        <label for="regFoto">Foto del Paciente (opcional)</label>
+                        <div class="foto-upload-container" id="fotoUploadContainer">
+                            <div class="foto-preview" id="fotoPreview" style="display: none;">
+                                <img id="fotoPreviewImg" src="" alt="Vista previa">
+                                <button type="button" class="foto-remove-btn" id="fotoRemoveBtn" title="Eliminar foto">✕</button>
+                            </div>
+                            <div class="foto-buttons">
+                                <label for="regFoto" class="btn btn-secondary foto-btn">
+                                    📁 Seleccionar Foto
+                                    <input 
+                                        type="file" 
+                                        id="regFoto" 
+                                        accept="image/*"
+                                        style="display: none;"
+                                    >
+                                </label>
+                                <button type="button" class="btn btn-secondary foto-btn" id="tomarFotoBtn">
+                                    📷 Tomar Foto
+                                </button>
+                            </div>
+                            <div class="foto-info" id="fotoInfo" style="display: none;">
+                                📸 Foto cargada: <span id="fotoSize">0 KB</span>
+                            </div>
+                            <small class="input-hint">✨ La foto se comprimirá automáticamente a formato optimizado (máx 200KB)</small>
+                        </div>
+                        <input type="hidden" id="regFotoBase64" name="foto">
                     </div>
                     
                     <div class="input-group full-width">
@@ -275,6 +322,7 @@
                 <table id="resultsTable" class="results-table">
                     <thead>
                         <tr>
+                            <th>Foto</th>
                             <th>Nombre Completo</th>
                             <th>Cédula</th>
                             <th>Edad</th>
@@ -289,7 +337,7 @@
                     </thead>
                     <tbody id="resultsBody">
                         <tr>
-                            <td colspan="10" class="no-results">
+                            <td colspan="11" class="no-results">
                                 Realice una búsqueda o presione "Buscar" para ver todos los pacientes
                             </td>
                         </tr>
@@ -326,10 +374,33 @@
         </footer>
     </div>
 
+    <!-- Modal de Cámara -->
+    <div id="cameraModal">
+        <div class="camera-container">
+            <video id="cameraVideo" autoplay playsinline></video>
+            <canvas id="cameraCanvas" style="display: none;"></canvas>
+            <div class="camera-controls">
+                <button type="button" class="btn btn-primary" id="captureFotoBtn">📸 Capturar Foto</button>
+                <button type="button" class="btn btn-secondary" id="cancelCameraBtn">✖ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para ver foto en tamaño completo -->
+    <div class="modal" id="photoViewModal">
+        <div class="modal-content photo-modal-content">
+            <button class="modal-close" onclick="closePhotoModal()">✖</button>
+            <h3 id="photoModalTitle" class="photo-modal-title">Foto del Paciente</h3>
+            <div class="photo-modal-image-container">
+                <img id="photoModalImage" src="" alt="Foto del paciente">
+            </div>
+        </div>
+    </div>
+
     <!-- OpenStreetMap Autocomplete (GRATIS, sin API key) -->
     <script src="openstreetmap-autocomplete.js?v=2.0"></script>
-    <script src="config.js?v=2.0"></script>
-    <script src="app.js?v=2.0"></script>
+    <script src="config.js?v=2.1"></script>
+    <script src="app.js?v=2.1"></script>
 
 
 

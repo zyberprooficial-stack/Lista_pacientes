@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	maxUploadSize = 10 << 20 // 10 MB
-	maxRecords    = 10000    // Máximo de registros en bulk upload
+	maxUploadSize     = 10 << 20 // 10 MB (bulk CSV)
+	maxCreateBodySize = 5 << 20  // 5 MB (JSON con foto base64)
+	maxRecords        = 10000    // Máximo de registros en bulk upload
 )
 
 // GetPacientes maneja GET /api/pacientes con paginación y filtros
@@ -70,11 +71,20 @@ func CreatePaciente(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxCreateBodySize)
+
 	// Parsear JSON del body
 	var input models.PacienteInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		respondError(w, http.StatusBadRequest, "JSON inválido")
 		return
+	}
+
+	// DEBUG: Log para verificar si foto llega
+	if input.Foto != "" {
+		log.Printf("🔵 DEBUG Handler: Foto recibida (tamaño: %d bytes)", len(input.Foto))
+	} else {
+		log.Printf("🔴 DEBUG Handler: NO se recibió foto")
 	}
 
 	// Validar entrada

@@ -15,6 +15,11 @@ func main() {
 	// Cargar configuración desde variables de entorno
 	cfg := config.Load()
 
+	log.Println("🚀 ========================================")
+	log.Println("🚀 Iniciando servidor con SOPORTE DE FOTOS")
+	log.Println("🚀 Versión: 2.0 - Campo foto habilitado")
+	log.Println("🚀 ========================================")
+
 	// Inicializar conexión a base de datos con pool optimizado
 	if err := database.Init(cfg); err != nil {
 		log.Fatalf("Error inicializando base de datos: %v", err)

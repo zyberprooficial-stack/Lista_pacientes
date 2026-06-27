@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -152,7 +153,8 @@ func GetPacientes(ctx context.Context, page, limit int, nombre, cedula, ubicacio
 			p.telefono,
 			p.edad,
 			p.ubicacion_actual, 
-			p.estado_salud, 
+			p.estado_salud,
+			p.foto,
 			p.fecha_registro,
 			e.estado as estado_nombre,
 			m.municipio as municipio_nombre,
@@ -182,7 +184,8 @@ func GetPacientes(ctx context.Context, page, limit int, nombre, cedula, ubicacio
 			&p.Telefono,
 			&p.Edad,
 			&p.UbicacionActual, 
-			&p.EstadoSalud, 
+			&p.EstadoSalud,
+			&p.Foto,
 			&p.FechaRegistro,
 			&p.Estado,
 			&p.Municipio,
@@ -190,6 +193,12 @@ func GetPacientes(ctx context.Context, page, limit int, nombre, cedula, ubicacio
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error escaneando fila: %w", err)
+		}
+		// DEBUG: Log para verificar si foto existe
+		if p.Foto != nil {
+			log.Printf("✅ Paciente %d tiene foto (tamaño: %d bytes)", p.ID, len(*p.Foto))
+		} else {
+			log.Printf("❌ Paciente %d NO tiene foto", p.ID)
 		}
 		pacientes = append(pacientes, p)
 	}
@@ -221,9 +230,9 @@ func GetPacientes(ctx context.Context, page, limit int, nombre, cedula, ubicacio
 func CreatePaciente(ctx context.Context, input *models.PacienteInput) (*models.Paciente, error) {
 	query := `
 		WITH inserted AS (
-			INSERT INTO pacientes (nombre_completo, cedula, telefono, edad, ubicacion_actual, estado_salud, id_estado, id_municipio, id_parroquia)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-			RETURNING id, nombre_completo, cedula, telefono, edad, ubicacion_actual, estado_salud, fecha_registro, id_estado, id_municipio, id_parroquia
+			INSERT INTO pacientes (nombre_completo, cedula, telefono, edad, ubicacion_actual, estado_salud, foto, id_estado, id_municipio, id_parroquia)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			RETURNING id, nombre_completo, cedula, telefono, edad, ubicacion_actual, estado_salud, foto, fecha_registro, id_estado, id_municipio, id_parroquia
 		)
 		SELECT 
 			i.id, 
@@ -232,7 +241,8 @@ func CreatePaciente(ctx context.Context, input *models.PacienteInput) (*models.P
 			i.telefono,
 			i.edad,
 			i.ubicacion_actual, 
-			i.estado_salud, 
+			i.estado_salud,
+			i.foto,
 			i.fecha_registro,
 			e.estado as estado_nombre,
 			m.municipio as municipio_nombre,
@@ -269,6 +279,17 @@ func CreatePaciente(ctx context.Context, input *models.PacienteInput) (*models.P
 		edadValue = input.Edad
 	}
 	
+	// Convertir foto vacía a NULL para la base de datos
+	var fotoValue interface{}
+	if input.Foto == "" {
+		log.Printf("⚠️ DEBUG CreatePaciente: Foto vacía para paciente %s", input.NombreCompleto)
+		fotoValue = nil
+	} else {
+		fotoSize := len(input.Foto)
+		log.Printf("✅ DEBUG CreatePaciente: Guardando foto para %s (tamaño: %d bytes)", input.NombreCompleto, fotoSize)
+		fotoValue = input.Foto
+	}
+	
 	err := db.QueryRowContext(
 		ctx,
 		query,
@@ -278,6 +299,7 @@ func CreatePaciente(ctx context.Context, input *models.PacienteInput) (*models.P
 		edadValue,
 		input.UbicacionActual,
 		input.EstadoSalud,
+		fotoValue,
 		input.EstadoID,
 		input.MunicipioID,
 		input.ParroquiaID,
@@ -288,7 +310,8 @@ func CreatePaciente(ctx context.Context, input *models.PacienteInput) (*models.P
 		&p.Telefono, 
 		&p.Edad, 
 		&p.UbicacionActual, 
-		&p.EstadoSalud, 
+		&p.EstadoSalud,
+		&p.Foto,
 		&p.FechaRegistro,
 		&p.Estado,
 		&p.Municipio,
