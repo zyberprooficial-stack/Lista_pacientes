@@ -439,6 +439,19 @@ func UpdatePaciente(ctx context.Context, id int, input *models.PacienteInput) (*
 	return &p, nil
 }
 
+// DeletePaciente elimina un paciente por ID
+func DeletePaciente(ctx context.Context, id int) error {
+	result, err := db.ExecContext(ctx, `DELETE FROM pacientes WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("error eliminando paciente: %w", err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("paciente con id %d no encontrado", id)
+	}
+	return nil
+}
+
 // BulkInsertPacientes inserta múltiples pacientes en batch (transacción)
 func BulkInsertPacientes(ctx context.Context, pacientes []models.PacienteInput) (*models.BulkUploadResult, error) {
 	result := &models.BulkUploadResult{

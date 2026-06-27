@@ -151,6 +151,35 @@ func UpdatePaciente(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, paciente)
 }
 
+// DeletePaciente maneja POST /api/pacientes/delete?id=X
+func DeletePaciente(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+
+	// Proteger el endpoint con token de administrador
+	if r.Header.Get("X-Admin-Token") != AdminToken {
+		respondError(w, http.StatusUnauthorized, "Token de administrador no autorizado o ausente")
+		return
+	}
+
+	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	if id <= 0 {
+		respondError(w, http.StatusBadRequest, "ID de paciente inválido")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := database.DeletePaciente(ctx, id); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Paciente eliminado correctamente"})
+}
 
 // BulkUpload maneja POST /api/pacientes/bulk para carga masiva CSV
 func BulkUpload(w http.ResponseWriter, r *http.Request) {

@@ -624,6 +624,15 @@ function handleResultsBodyClick(e) {
         return;
     }
 
+    const deleteBtn = e.target.closest('.btn-delete-patient');
+    if (deleteBtn) {
+        e.stopPropagation();
+        e.preventDefault();
+        const id = parseInt(deleteBtn.dataset.id, 10);
+        handleDeletePatient(id);
+        return;
+    }
+
     const photoImg = e.target.closest('.patient-photo-thumb');
     if (photoImg) {
         e.stopPropagation();
@@ -784,7 +793,12 @@ function createDesktopRow(paciente) {
         <td data-label="Nombre">
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                 <span>${f.nombre}</span>
-                ${editModeEnabled ? `<button type="button" class="btn btn-secondary btn-edit-patient" data-id="${paciente.id}" title="Editar paciente" style="padding: 2px 6px; font-size: 11px; margin-left: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">✏️</button>` : ''}
+                ${editModeEnabled ? `
+                <div style="display: flex; gap: 4px; align-items: center;">
+                    <button type="button" class="btn btn-secondary btn-edit-patient" data-id="${paciente.id}" title="Editar paciente" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">✏️</button>
+                    <button type="button" class="btn btn-danger btn-delete-patient" data-id="${paciente.id}" title="Eliminar paciente" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; background-color: #f43f5e; border-color: #f43f5e; color: white;">🗑️</button>
+                </div>
+                ` : ''}
             </div>
         </td>
         <td data-label="Cédula"><strong>${f.cedula}</strong></td>
@@ -830,9 +844,12 @@ function createMobileCardRow(paciente) {
                 <div class="detail-row"><span>Parroquia</span><span>${f.parroquia}</span></div>
                 <div class="detail-row"><span>Fecha registro</span><span>${f.fechaFormateada}</span></div>
                 ${editModeEnabled ? `
-                <div class="detail-row" style="margin-top: 12px; justify-content: flex-end; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+                <div class="detail-row" style="margin-top: 12px; justify-content: flex-end; border-top: 1px dashed var(--border-color); padding-top: 12px; gap: 8px;">
                     <button type="button" class="btn btn-secondary btn-edit-patient" data-id="${paciente.id}" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                        <span>✏️ Editar Paciente</span>
+                        <span>✏️ Editar</span>
+                    </button>
+                    <button type="button" class="btn btn-danger btn-delete-patient" data-id="${paciente.id}" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; background-color: #f43f5e; border-color: #f43f5e; color: white;">
+                        <span>🗑️ Eliminar</span>
                     </button>
                 </div>` : ''}
             </div>
@@ -1930,6 +1947,45 @@ async function loadParroquiasForEditing(municipioId, selectedParroquiaId = null)
     poblarDropdownParroquias(parroquias);
     if (selectedParroquiaId) {
         elements.regParroquia.value = selectedParroquiaId;
+    }
+}
+
+async function handleDeletePatient(id) {
+    if (!lastPacientesResponse || !lastPacientesResponse.data) return;
+    const paciente = lastPacientesResponse.data.find(p => p.id === id);
+    if (!paciente) return;
+
+    const confirmacion = confirm(`¿Está seguro de que desea eliminar permanentemente al paciente "${paciente.nombre_completo}"? Esta acción no se puede deshacer.`);
+    if (!confirmacion) return;
+
+    showLoading();
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/pacientes/delete?id=${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Token': _adminToken
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Error al eliminar paciente');
+        }
+
+        showSuccess(`🎉 ¡Eliminado! El paciente ${paciente.nombre_completo} ha sido removido del sistema.`);
+        loadStats();
+        
+        setTimeout(() => {
+            loadPacientes();
+        }, 1500);
+
+    } catch (error) {
+        showError(error.message);
+    } finally {
+        hideLoading();
     }
 }
 
