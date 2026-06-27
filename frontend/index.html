@@ -11,50 +11,28 @@
 
     <!-- Open Graph / Facebook / WhatsApp Sharing -->
     <meta property="og:title" content="LocalizaVE - Sistema de Localización de Pacientes">
-    <meta property="og:description"
-        content="Sistema de consulta en tiempo real para la localización de pacientes afectados por terremoto en Venezuela.">
-    <meta property="og:image" content="./1.png">
+    <meta property="og:description" content="Sistema de consulta en tiempo real para la localización de pacientes afectados por terremoto en Venezuela.">
+    <meta property="og:image" content="https://localizave.com/1.png">
+    <meta property="og:image:secure_url" content="https://localizave.com/1.png">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="512">
     <meta property="og:image:height" content="512">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="">
+    <meta property="og:url" content="https://localizave.com/">
 
     <!-- Twitter / X Sharing -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="LocalizaVE - Sistema de Localización de Pacientes">
-    <meta name="twitter:description"
-        content="Sistema de consulta en tiempo real para la localización de pacientes afectados por terremoto en Venezuela.">
-    <meta name="twitter:image" content="./1.png">
-
-    <script>
-        // Configurar metadatos og:image, og:url y twitter:image absolutos dinámicamente según el dominio actual
-        (function () {
-            try {
-                const origin = window.location.origin;
-                const href = window.location.href;
-
-                const ogUrl = document.querySelector('meta[property="og:url"]');
-                if (ogUrl) ogUrl.setAttribute('content', href);
-
-                const ogImage = document.querySelector('meta[property="og:image"]');
-                if (ogImage) ogImage.setAttribute('content', origin + window.location.pathname.replace(/\/[^\/]*$/, '') + '/1.png');
-
-                const twitterImage = document.querySelector('meta[name="twitter:image"]');
-                if (twitterImage) twitterImage.setAttribute('content', origin + window.location.pathname.replace(/\/[^\/]*$/, '') + '/1.png');
-            } catch (e) {
-                console.error('Error configurando metadatos para compartir:', e);
-            }
-        })();
-    </script>
+    <meta name="twitter:description" content="Sistema de consulta en tiempo real para la localización de pacientes afectados por terremoto en Venezuela.">
+    <meta name="twitter:image" content="https://localizave.com/1.png">
 
     <title>Localizave - Sistema de Localización de Pacientes</title>
     <!-- Favicon / Logo de Pestaña con Tamaños Estándar -->
-    <link rel="icon" type="image/png" sizes="32x32" href="./1.png">
-    <link rel="icon" type="image/png" sizes="96x96" href="./1.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="./1.png">
-    <link rel="shortcut icon" type="image/png" href="./1.png">
-    <link rel="apple-touch-icon" href="./1.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://localizave.com/1.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="https://localizave.com/1.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://localizave.com/1.png">
+    <link rel="shortcut icon" type="image/png" href="https://localizave.com/1.png">
+    <link rel="apple-touch-icon" href="https://localizave.com/1.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
