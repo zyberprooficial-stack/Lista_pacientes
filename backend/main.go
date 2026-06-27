@@ -15,6 +15,9 @@ func main() {
 	// Cargar configuración desde variables de entorno
 	cfg := config.Load()
 
+	// Asignar el token de administrador a los handlers
+	handlers.AdminToken = cfg.AdminToken
+
 
 
 	// Inicializar conexión a base de datos con pool optimizado
@@ -35,6 +38,7 @@ func main() {
 	// API endpoints
 	mux.HandleFunc("/api/pacientes", handlers.GetPacientes)
 	mux.HandleFunc("/api/pacientes/create", handlers.CreatePaciente)
+	mux.HandleFunc("/api/pacientes/update", handlers.UpdatePaciente)
 	mux.HandleFunc("/api/pacientes/bulk", handlers.BulkUpload)
 	
 	// Endpoints geográficos

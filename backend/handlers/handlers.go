@@ -19,6 +19,9 @@ const (
 	maxRecords        = 10000    // Máximo de registros en bulk upload
 )
 
+// AdminToken es cargado desde main para autenticación de edición
+var AdminToken string
+
 // GetPacientes maneja GET /api/pacientes con paginación y filtros
 func GetPacientes(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -99,6 +102,55 @@ func CreatePaciente(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusCreated, paciente)
 }
+
+// UpdatePaciente maneja POST /api/pacientes/update?id=X
+func UpdatePaciente(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+
+	// Proteger el endpoint con token de administrador
+	if r.Header.Get("X-Admin-Token") != AdminToken {
+		respondError(w, http.StatusUnauthorized, "Token de administrador no autorizado o ausente")
+		return
+	}
+
+	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	if id <= 0 {
+		respondError(w, http.StatusBadRequest, "ID de paciente inválido")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxCreateBodySize)
+
+	// Parsear JSON del body
+	var input models.PacienteInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondError(w, http.StatusBadRequest, "JSON inválido")
+		return
+	}
+
+	// Validar entrada
+	if errors := input.Validate(); len(errors) > 0 {
+		respondErrorWithDetails(w, http.StatusBadRequest, "Validación fallida", errors)
+		return
+	}
+
+	// Context con timeout
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	// Actualizar paciente en base de datos
+	paciente, err := database.UpdatePaciente(ctx, id, &input)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, paciente)
+}
+
 
 // BulkUpload maneja POST /api/pacientes/bulk para carga masiva CSV
 func BulkUpload(w http.ResponseWriter, r *http.Request) {

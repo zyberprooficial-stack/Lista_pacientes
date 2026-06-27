@@ -26,6 +26,10 @@ let currentFilters = {
     fechaHasta: ''
 };
 
+// Modo edición (se activa mediante un token secreto y difícil de adivinar en la URL)
+const editModeEnabled = new URLSearchParams(window.location.search).get('token') === 'sismo2026_admin_key_secure_access';
+let editingPatientId = null;
+
 // Caché para optimizar y reducir llamadas al servidor
 const cache = {
     estados: null,
@@ -97,7 +101,10 @@ elements.toggleFiltersBtn.addEventListener('click', toggleAdvancedFilters);
 elements.searchForm.addEventListener('submit', handleSearch);
 elements.clearBtn.addEventListener('click', handleClear);
 elements.registerForm.addEventListener('submit', handleRegister);
-elements.cancelRegisterBtn.addEventListener('click', () => showSearchSection());
+elements.cancelRegisterBtn.addEventListener('click', () => {
+    cancelEditing();
+    showSearchSection();
+});
 elements.prevBtn.addEventListener('click', () => changePage(currentPage - 1));
 elements.nextBtn.addEventListener('click', () => changePage(currentPage + 1));
 elements.pageSize.addEventListener('change', handlePageSizeChange);
@@ -473,6 +480,10 @@ async function handleRegister(e) {
     hideError();
     hideSuccess();
     
+    if (editingPatientId) {
+        return handleUpdate(e);
+    }
+    
     // Obtener foto en base64 si existe
     const fotoBase64Input = document.getElementById('regFotoBase64');
     const fotoBase64 = fotoBase64Input ? fotoBase64Input.value : '';
@@ -602,6 +613,15 @@ function handleLoadMore() {
 }
 
 function handleResultsBodyClick(e) {
+    const editBtn = e.target.closest('.btn-edit-patient');
+    if (editBtn) {
+        e.stopPropagation();
+        e.preventDefault();
+        const id = parseInt(editBtn.dataset.id, 10);
+        startEditing(id);
+        return;
+    }
+
     const photoImg = e.target.closest('.patient-photo-thumb');
     if (photoImg) {
         e.stopPropagation();
@@ -759,7 +779,12 @@ function createDesktopRow(paciente) {
     tdPhoto.appendChild(createPhotoElement(paciente));
     tr.appendChild(tdPhoto);
     tr.insertAdjacentHTML('beforeend', `
-        <td data-label="Nombre">${f.nombre}</td>
+        <td data-label="Nombre">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <span>${f.nombre}</span>
+                ${editModeEnabled ? `<button type="button" class="btn btn-secondary btn-edit-patient" data-id="${paciente.id}" title="Editar paciente" style="padding: 2px 6px; font-size: 11px; margin-left: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">✏️</button>` : ''}
+            </div>
+        </td>
         <td data-label="Cédula"><strong>${f.cedula}</strong></td>
         <td data-label="Edad">${f.edad}</td>
         <td data-label="Teléfono">${f.telefono}</td>
@@ -802,6 +827,12 @@ function createMobileCardRow(paciente) {
                 <div class="detail-row"><span>Municipio</span><span>${f.municipio}</span></div>
                 <div class="detail-row"><span>Parroquia</span><span>${f.parroquia}</span></div>
                 <div class="detail-row"><span>Fecha registro</span><span>${f.fechaFormateada}</span></div>
+                ${editModeEnabled ? `
+                <div class="detail-row" style="margin-top: 12px; justify-content: flex-end; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+                    <button type="button" class="btn btn-secondary btn-edit-patient" data-id="${paciente.id}" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <span>✏️ Editar Paciente</span>
+                    </button>
+                </div>` : ''}
             </div>
         </td>
     `;
@@ -1256,7 +1287,7 @@ function validateCedulaNumber(e) {
             const response = await fetch(`${API_BASE_URL}/pacientes?cedula=${encodeURIComponent(cedulaCompleta)}&limit=1`);
             const data = await response.json();
             
-            if (data.data && data.data.length > 0) {
+            if (data.data && data.data.length > 0 && data.data[0].id !== editingPatientId) {
                 msgElement.style.color = '#f43f5e';
                 msgElement.textContent = '⚠️ Esta cédula ya está registrada';
                 elements.regCedulaNumero.setCustomValidity('Cédula duplicada');
@@ -1654,5 +1685,249 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+// ===================================================
+// FUNCIONES DE EDICIÓN (SOLO ACCESIBLE CON PARAMETRO ?admin=1 o ?edit=1)
+// ===================================================
+
+async function startEditing(id) {
+    if (!lastPacientesResponse || !lastPacientesResponse.data) return;
+    const paciente = lastPacientesResponse.data.find(p => p.id === id);
+    if (!paciente) return;
+    
+    editingPatientId = id;
+    
+    // Cambiar texto de títulos y botones para modo edición
+    const formTitle = document.querySelector('#registerSection .form-title');
+    const formSubtitle = document.querySelector('#registerSection .form-subtitle');
+    const submitBtn = document.querySelector('#registerForm button[type="submit"]');
+    
+    if (formTitle) {
+        formTitle.innerHTML = '✏️ Editar Datos de Paciente';
+    }
+    if (formSubtitle) {
+        formSubtitle.textContent = 'Modifique los campos necesarios para actualizar la información del paciente';
+    }
+    if (submitBtn) {
+        submitBtn.innerHTML = '✏️ Guardar Cambios';
+    }
+    
+    // Cambiar estilos del botón de cancelar para que diga "Cancelar Edición"
+    const cancelBtn = document.getElementById('cancelRegisterBtn');
+    if (cancelBtn) {
+        cancelBtn.innerHTML = '✖ Cancelar Edición';
+    }
+    
+    // Mostrar sección del formulario
+    showRegisterSection();
+    
+    // Llenar campos
+    elements.regNombre.value = paciente.nombre_completo;
+    
+    // Cédula
+    if (paciente.cedula) {
+        const tipo = paciente.cedula.charAt(0);
+        const numero = paciente.cedula.substring(1);
+        if (elements.regCedulaTipo) elements.regCedulaTipo.value = tipo;
+        if (elements.regCedulaNumero) elements.regCedulaNumero.value = numero;
+    } else {
+        if (elements.regCedulaNumero) elements.regCedulaNumero.value = '';
+    }
+    
+    elements.regTelefono.value = paciente.telefono || '';
+    elements.regEdad.value = paciente.edad || '';
+    elements.regUbicacion.value = paciente.ubicacion_actual;
+    elements.regEstadoSalud.value = paciente.estado_salud;
+    
+    // Foto
+    removeFoto();
+    if (paciente.foto) {
+        showFotoPreview(paciente.foto);
+        const base64Input = document.getElementById('regFotoBase64');
+        if (base64Input) base64Input.value = '';
+    }
+    
+    // Poblar dropdowns de geografía en cascada
+    if (paciente.estado_id) {
+        elements.regEstadoGeo.value = paciente.estado_id;
+        await loadMunicipiosForEditing(paciente.estado_id, paciente.municipio_id, paciente.parroquia_id);
+    }
+    
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+}
+
+function cancelEditing() {
+    editingPatientId = null;
+    
+    // Restaurar títulos y botones a su estado original
+    const formTitle = document.querySelector('#registerSection .form-title');
+    const formSubtitle = document.querySelector('#registerSection .form-subtitle');
+    const submitBtn = document.querySelector('#registerForm button[type="submit"]');
+    
+    if (formTitle) {
+        formTitle.innerHTML = 'Registro Público de Paciente';
+    }
+    if (formSubtitle) {
+        formSubtitle.textContent = 'Complete la información del paciente afectado';
+    }
+    if (submitBtn) {
+        submitBtn.innerHTML = 'Registrar Paciente';
+    }
+    
+    const cancelBtn = document.getElementById('cancelRegisterBtn');
+    if (cancelBtn) {
+        cancelBtn.innerHTML = '✖ Cancelar';
+    }
+    
+    // Limpiar formulario
+    elements.registerForm.reset();
+    removeFoto();
+    
+    // Resetear dropdowns
+    elements.regMunicipio.innerHTML = '<option value="">Primero seleccione un estado</option>';
+    elements.regMunicipio.disabled = true;
+    elements.regParroquia.innerHTML = '<option value="">Primero seleccione un municipio</option>';
+    elements.regParroquia.disabled = true;
+    
+    const msgElement = document.getElementById('cedulaValidationMsg');
+    if (msgElement) msgElement.style.display = 'none';
+    if (elements.regCedulaNumero) elements.regCedulaNumero.setCustomValidity('');
+    
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+}
+
+async function handleUpdate(e) {
+    e.preventDefault();
+    
+    hideError();
+    hideSuccess();
+    
+    const fotoBase64Input = document.getElementById('regFotoBase64');
+    let fotoBase64 = fotoBase64Input ? fotoBase64Input.value : '';
+    
+    if (fotoBase64 === '') {
+        const previewVisible = elements.fotoPreview && elements.fotoPreview.style.display !== 'none';
+        if (previewVisible) {
+            fotoBase64 = 'KEEP';
+        } else {
+            fotoBase64 = 'REMOVE';
+        }
+    }
+
+    const regCedulaTipo = document.getElementById('regCedulaTipo');
+    const regCedulaNumero = document.getElementById('regCedulaNumero');
+    const cedulaCompleta = regCedulaNumero && regCedulaNumero.value ? 
+        `${regCedulaTipo.value}${regCedulaNumero.value}` : '';
+    
+    const paciente = {
+        nombre_completo: elements.regNombre.value.trim(),
+        cedula: cedulaCompleta,
+        telefono: elements.regTelefono.value.trim(),
+        edad: parseInt(elements.regEdad.value) || 0,
+        ubicacion_actual: elements.regUbicacion.value.trim(),
+        estado_salud: elements.regEstadoSalud.value,
+        foto: fotoBase64,
+        estado_id: parseInt(elements.regEstadoGeo.value),
+        municipio_id: parseInt(elements.regMunicipio.value),
+        parroquia_id: parseInt(elements.regParroquia.value)
+    };
+    
+    if (!paciente.nombre_completo || !paciente.ubicacion_actual || !paciente.estado_salud) {
+        showError('Por favor complete todos los campos requeridos');
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/pacientes/update?id=${editingPatientId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(paciente)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            if (data.details && data.details.length > 0) {
+                const errorList = data.details.join('\n• ');
+                throw new Error(`Errores de validación:\n• ${errorList}`);
+            }
+            throw new Error(data.error || 'Error al actualizar paciente');
+        }
+        
+        showSuccess(`🎉 ¡Actualización Exitosa! Los datos de ${paciente.nombre_completo} se han modificado correctamente.`);
+        
+        cancelEditing();
+        loadStats();
+        
+        setTimeout(() => {
+            showSearchSection();
+            loadPacientes();
+        }, 2000);
+        
+    } catch (error) {
+        showError(error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function loadMunicipiosForEditing(estadoId, selectedMunicipioId = null, selectedParroquiaId = null) {
+    elements.regMunicipio.innerHTML = '<option value="">Cargando municipios...</option>';
+    elements.regMunicipio.disabled = true;
+    
+    let municipios;
+    if (cache.municipios[estadoId]) {
+        municipios = cache.municipios[estadoId];
+    } else {
+        try {
+            const response = await fetch(`${API_BASE_URL}/municipios?estado_id=${estadoId}`);
+            if (!response.ok) throw new Error();
+            municipios = await response.json();
+            cache.municipios[estadoId] = municipios;
+        } catch (e) {
+            elements.regMunicipio.innerHTML = '<option value="">Error al cargar municipios</option>';
+            return;
+        }
+    }
+    
+    poblarDropdownMunicipios(municipios);
+    if (selectedMunicipioId) {
+        elements.regMunicipio.value = selectedMunicipioId;
+        await loadParroquiasForEditing(selectedMunicipioId, selectedParroquiaId);
+    }
+}
+
+async function loadParroquiasForEditing(municipioId, selectedParroquiaId = null) {
+    elements.regParroquia.innerHTML = '<option value="">Cargando parroquias...</option>';
+    elements.regParroquia.disabled = true;
+    
+    let parroquias;
+    if (cache.parroquias[municipioId]) {
+        parroquias = cache.parroquias[municipioId];
+    } else {
+        try {
+            const response = await fetch(`${API_BASE_URL}/parroquias?municipio_id=${municipioId}`);
+            if (!response.ok) throw new Error();
+            parroquias = await response.json();
+            cache.parroquias[municipioId] = parroquias;
+        } catch (e) {
+            elements.regParroquia.innerHTML = '<option value="">Error al cargar parroquias</option>';
+            return;
+        }
+    }
+    
+    poblarDropdownParroquias(parroquias);
+    if (selectedParroquiaId) {
+        elements.regParroquia.value = selectedParroquiaId;
+    }
+}
 
 

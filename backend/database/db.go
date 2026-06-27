@@ -157,7 +157,10 @@ func GetPacientes(ctx context.Context, page, limit int, nombre, cedula, ubicacio
 			p.fecha_registro,
 			e.estado as estado_nombre,
 			m.municipio as municipio_nombre,
-			pa.parroquia as parroquia_nombre
+			pa.parroquia as parroquia_nombre,
+			p.id_estado,
+			p.id_municipio,
+			p.id_parroquia
 		FROM pacientes p
 		LEFT JOIN estados e ON p.id_estado = e.id_estado
 		LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
@@ -189,6 +192,9 @@ func GetPacientes(ctx context.Context, page, limit int, nombre, cedula, ubicacio
 			&p.Estado,
 			&p.Municipio,
 			&p.Parroquia,
+			&p.EstadoID,
+			&p.MunicipioID,
+			&p.ParroquiaID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error escaneando fila: %w", err)
@@ -314,6 +320,120 @@ func CreatePaciente(ctx context.Context, input *models.PacienteInput) (*models.P
 			return nil, fmt.Errorf("la cédula %s ya existe en el sistema", input.Cedula)
 		}
 		return nil, fmt.Errorf("error creando paciente: %w", err)
+	}
+
+	return &p, nil
+}
+
+// UpdatePaciente actualiza un paciente existente
+func UpdatePaciente(ctx context.Context, id int, input *models.PacienteInput) (*models.Paciente, error) {
+	query := `
+		WITH updated AS (
+			UPDATE pacientes 
+			SET nombre_completo = $1, 
+				cedula = $2, 
+				telefono = $3, 
+				edad = $4, 
+				ubicacion_actual = $5, 
+				estado_salud = $6, 
+				foto = CASE WHEN $7 = 'KEEP' THEN foto WHEN $7 = 'REMOVE' THEN NULL ELSE $7 END, 
+				id_estado = $8, 
+				id_municipio = $9, 
+				id_parroquia = $10
+			WHERE id = $11
+			RETURNING id, nombre_completo, cedula, telefono, edad, ubicacion_actual, estado_salud, foto, fecha_registro, id_estado, id_municipio, id_parroquia
+		)
+		SELECT 
+			u.id, 
+			u.nombre_completo, 
+			u.cedula, 
+			u.telefono,
+			u.edad,
+			u.ubicacion_actual, 
+			u.estado_salud,
+			u.foto,
+			u.fecha_registro,
+			e.estado as estado_nombre,
+			m.municipio as municipio_nombre,
+			pa.parroquia as parroquia_nombre,
+			u.id_estado,
+			u.id_municipio,
+			u.id_parroquia
+		FROM updated u
+		LEFT JOIN estados e ON u.id_estado = e.id_estado
+		LEFT JOIN municipios m ON u.id_municipio = m.id_municipio
+		LEFT JOIN parroquias pa ON u.id_parroquia = pa.id_parroquia
+	`
+
+	var p models.Paciente
+	
+	// Convertir cédula vacía a NULL para la base de datos
+	var cedulaValue interface{}
+	if input.Cedula == "" {
+		cedulaValue = nil
+	} else {
+		cedulaValue = input.Cedula
+	}
+	
+	// Convertir teléfono vacío a NULL para la base de datos
+	var telefonoValue interface{}
+	if input.Telefono == "" {
+		telefonoValue = nil
+	} else {
+		telefonoValue = input.Telefono
+	}
+	
+	// Convertir edad 0 a NULL para la base de datos
+	var edadValue interface{}
+	if input.Edad == 0 {
+		edadValue = nil
+	} else {
+		edadValue = input.Edad
+	}
+	
+	// Para foto, si es vacía y no se especifica KEEP o REMOVE, asumimos KEEP por defecto al editar
+	fotoValue := input.Foto
+	if fotoValue == "" {
+		fotoValue = "KEEP"
+	}
+	
+	err := db.QueryRowContext(
+		ctx,
+		query,
+		input.NombreCompleto,
+		cedulaValue,
+		telefonoValue,
+		edadValue,
+		input.UbicacionActual,
+		input.EstadoSalud,
+		fotoValue,
+		input.EstadoID,
+		input.MunicipioID,
+		input.ParroquiaID,
+		id,
+	).Scan(
+		&p.ID, 
+		&p.NombreCompleto, 
+		&p.Cedula, 
+		&p.Telefono, 
+		&p.Edad, 
+		&p.UbicacionActual, 
+		&p.EstadoSalud,
+		&p.Foto,
+		&p.FechaRegistro,
+		&p.Estado,
+		&p.Municipio,
+		&p.Parroquia,
+		&p.EstadoID,
+		&p.MunicipioID,
+		&p.ParroquiaID,
+	)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate key") {
+			return nil, fmt.Errorf("la cédula %s ya existe en el sistema", input.Cedula)
+		}
+		return nil, fmt.Errorf("error actualizando paciente: %w", err)
 	}
 
 	return &p, nil

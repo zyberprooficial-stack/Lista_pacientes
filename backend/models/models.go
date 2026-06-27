@@ -19,6 +19,9 @@ type Paciente struct {
 	Estado          *string   `json:"estado,omitempty"`
 	Municipio       *string   `json:"municipio,omitempty"`
 	Parroquia       *string   `json:"parroquia,omitempty"`
+	EstadoID        *int      `json:"estado_id,omitempty"`
+	MunicipioID     *int      `json:"municipio_id,omitempty"`
+	ParroquiaID     *int      `json:"parroquia_id,omitempty"`
 }
 
 // PacienteInput representa los datos de entrada para crear un paciente

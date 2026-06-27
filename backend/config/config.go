@@ -14,6 +14,7 @@ type Config struct {
 	MaxIdleConnections  int
 	RateLimitPerMinute  int
 	GoogleMapsAPIKey    string
+	AdminToken          string
 }
 
 // Load carga la configuración desde variables de entorno con valores por defecto
@@ -25,6 +26,7 @@ func Load() *Config {
 		MaxIdleConnections:  getEnvAsInt("MAX_IDLE_CONNECTIONS", 5),
 		RateLimitPerMinute:  getEnvAsInt("RATE_LIMIT_PER_MINUTE", 100),
 		GoogleMapsAPIKey:    getEnv("GOOGLE_MAPS_API_KEY", ""),
+		AdminToken:          getEnv("ADMIN_TOKEN", "sismo2026_secreto_seguro_9f8c"),
 	}
 
 	// Validar configuración crítica
