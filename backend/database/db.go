@@ -793,7 +793,9 @@ func ImportPacientesWithUpsert(ctx context.Context, pacientes []models.PacienteI
 	defer findByCedulaStmt.Close()
 
 	findByNombreStmt, err := tx.PrepareContext(ctx, `
-		SELECT id, cedula FROM pacientes WHERE LOWER(nombre_completo) = LOWER($1) LIMIT 1
+		SELECT id, cedula FROM pacientes 
+		WHERE LOWER(TRIM(REGEXP_REPLACE(nombre_completo, '\s+', ' ', 'g'))) = LOWER(TRIM(REGEXP_REPLACE($1, '\s+', ' ', 'g')))
+		LIMIT 1
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("error preparando statement findByNombre: %w", err)
@@ -885,9 +887,10 @@ func ImportPacientesWithUpsert(ctx context.Context, pacientes []models.PacienteI
 				result.Errors = append(result.Errors, fmt.Sprintf("línea %d: error buscando por cédula: %v", lineNum, err))
 				continue
 			}
+			// Si err == sql.ErrNoRows, significa que la cédula no existe en BD, continuamos a buscar por nombre
 		}
 
-		// 2. Si no existe por cédula, buscar por nombre
+		// 2. Si no encontró por cédula, buscar por nombre
 		if existsBy == "" && p.NombreCompleto != "" {
 			err := findByNombreStmt.QueryRowContext(ctx, p.NombreCompleto).Scan(&existingID, &existingCedula)
 			if err == nil {
