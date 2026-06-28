@@ -429,3 +429,30 @@ func GetGoogleMapsConfig(w http.ResponseWriter, r *http.Request, apiKey string) 
 
 	respondJSON(w, http.StatusOK, config)
 }
+
+// ExportAllPacientes maneja GET /api/pacientes/export para obtener todos los pacientes (admin only)
+func ExportAllPacientes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+
+	// Proteger el endpoint con token de administrador
+	if r.Header.Get("X-Admin-Token") != AdminToken {
+		respondError(w, http.StatusUnauthorized, "Token de administrador no autorizado o ausente")
+		return
+	}
+
+	// Context con timeout largo para exportación completa
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	// Obtener todos los pacientes sin paginación
+	pacientes, err := database.GetAllPacientes(ctx)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Error obteniendo pacientes para exportación")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, pacientes)
+}

@@ -47,6 +47,7 @@ const elements = {
     // Navegación
     showSearchBtn: document.getElementById('showSearchBtn'),
     showRegisterBtn: document.getElementById('showRegisterBtn'),
+    exportExcelBtn: document.getElementById('exportExcelBtn'),
     searchSection: document.getElementById('searchSection'),
     registerSection: document.getElementById('registerSection'),
     
@@ -99,6 +100,9 @@ const elements = {
 // Event Listeners
 elements.showSearchBtn.addEventListener('click', showSearchSection);
 elements.showRegisterBtn.addEventListener('click', showRegisterSection);
+if (elements.exportExcelBtn) {
+    elements.exportExcelBtn.addEventListener('click', handleExportExcel);
+}
 elements.toggleFiltersBtn.addEventListener('click', toggleAdvancedFilters);
 elements.searchForm.addEventListener('submit', handleSearch);
 elements.clearBtn.addEventListener('click', handleClear);
@@ -1990,3 +1994,140 @@ async function handleDeletePatient(id) {
 }
 
 
+
+
+/**
+ * Maneja la exportación de todos los pacientes a Excel
+ */
+async function handleExportExcel() {
+    if (!_adminToken) {
+        showError('No tiene permisos para exportar datos');
+        return;
+    }
+    
+    // Cambiar el texto del botón para mostrar que está procesando
+    const originalText = elements.exportExcelBtn.innerHTML;
+    elements.exportExcelBtn.innerHTML = '<i data-lucide="loader"></i><span>Exportando...</span>';
+    elements.exportExcelBtn.disabled = true;
+    
+    showLoading();
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/pacientes/export`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Token': _adminToken
+            }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Token de administrador inválido o ausente');
+            }
+            throw new Error(`Error del servidor: ${response.status}`);
+        }
+        
+        const pacientes = await response.json();
+        
+        if (!pacientes || pacientes.length === 0) {
+            showError('No hay datos para exportar');
+            return;
+        }
+        
+        // Crear el archivo Excel con SheetJS
+        exportToExcel(pacientes);
+        
+        showSuccess(`✅ Se exportaron ${pacientes.length} pacientes exitosamente`);
+        
+    } catch (error) {
+        showError(`Error al exportar: ${error.message}`);
+    } finally {
+        hideLoading();
+        elements.exportExcelBtn.innerHTML = originalText;
+        elements.exportExcelBtn.disabled = false;
+        // Re-inicializar iconos de Lucide
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    }
+}
+
+/**
+ * Exporta los datos a Excel usando SheetJS
+ */
+function exportToExcel(pacientes) {
+    if (typeof XLSX === 'undefined') {
+        showError('Librería de Excel no cargada. Recargue la página.');
+        return;
+    }
+    
+    // Preparar los datos para Excel
+    const excelData = pacientes.map(p => ({
+        'ID': p.id,
+        'Nombre Completo': p.nombre_completo,
+        'Cédula': p.cedula || '',
+        'Teléfono': p.telefono || '',
+        'Edad': p.edad || '',
+        'Estado': p.estado || '',
+        'Municipio': p.municipio || '',
+        'Parroquia': p.parroquia || '',
+        'Ubicación Actual': p.ubicacion_actual,
+        'Estado de Salud': p.estado_salud,
+        'Fecha de Registro': formatDateForExcel(p.fecha_registro)
+    }));
+    
+    // Crear workbook y worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    
+    // Configurar ancho de columnas
+    const columnWidths = [
+        { wch: 8 },  // ID
+        { wch: 30 }, // Nombre Completo
+        { wch: 12 }, // Cédula
+        { wch: 15 }, // Teléfono
+        { wch: 8 },  // Edad
+        { wch: 20 }, // Estado
+        { wch: 25 }, // Municipio
+        { wch: 25 }, // Parroquia
+        { wch: 40 }, // Ubicación Actual
+        { wch: 15 }, // Estado de Salud
+        { wch: 20 }  // Fecha de Registro
+    ];
+    ws['!cols'] = columnWidths;
+    
+    // Agregar el worksheet al workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Pacientes');
+    
+    // Generar nombre del archivo con fecha actual
+    const fecha = new Date();
+    const fechaStr = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+    const fileName = `pacientes_localizave_${fechaStr}.xlsx`;
+    
+    // Descargar el archivo
+    XLSX.writeFile(wb, fileName);
+}
+
+/**
+ * Formatea fecha para Excel
+ */
+function formatDateForExcel(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('es-VE', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+// Mostrar botón de exportar si el usuario es admin
+document.addEventListener('DOMContentLoaded', () => {
+    if (editModeEnabled && elements.exportExcelBtn) {
+        elements.exportExcelBtn.style.display = 'inline-flex';
+    }
+});

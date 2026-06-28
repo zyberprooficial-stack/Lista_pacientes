@@ -698,3 +698,68 @@ func GetStats(ctx context.Context) (*Stats, error) {
 	}
 	return &s, nil
 }
+
+// GetAllPacientes obtiene todos los pacientes sin paginación (para exportación)
+func GetAllPacientes(ctx context.Context) ([]models.Paciente, error) {
+	query := `
+		SELECT 
+			p.id, 
+			p.nombre_completo, 
+			p.cedula, 
+			p.telefono,
+			p.edad,
+			p.ubicacion_actual, 
+			p.estado_salud,
+			p.foto,
+			p.fecha_registro,
+			e.estado as estado_nombre,
+			m.municipio as municipio_nombre,
+			pa.parroquia as parroquia_nombre,
+			p.id_estado,
+			p.id_municipio,
+			p.id_parroquia
+		FROM pacientes p
+		LEFT JOIN estados e ON p.id_estado = e.id_estado
+		LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
+		LEFT JOIN parroquias pa ON p.id_parroquia = pa.id_parroquia
+		ORDER BY p.fecha_registro DESC
+	`
+
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("error ejecutando query: %w", err)
+	}
+	defer rows.Close()
+
+	pacientes := []models.Paciente{}
+	for rows.Next() {
+		var p models.Paciente
+		err := rows.Scan(
+			&p.ID, 
+			&p.NombreCompleto, 
+			&p.Cedula, 
+			&p.Telefono,
+			&p.Edad,
+			&p.UbicacionActual, 
+			&p.EstadoSalud,
+			&p.Foto,
+			&p.FechaRegistro,
+			&p.Estado,
+			&p.Municipio,
+			&p.Parroquia,
+			&p.EstadoID,
+			&p.MunicipioID,
+			&p.ParroquiaID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error escaneando fila: %w", err)
+		}
+		pacientes = append(pacientes, p)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterando filas: %w", err)
+	}
+
+	return pacientes, nil
+}
