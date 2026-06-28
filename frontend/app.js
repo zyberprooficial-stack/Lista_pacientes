@@ -48,6 +48,8 @@ const elements = {
     showSearchBtn: document.getElementById('showSearchBtn'),
     showRegisterBtn: document.getElementById('showRegisterBtn'),
     exportExcelBtn: document.getElementById('exportExcelBtn'),
+    importExcelBtn: document.getElementById('importExcelBtn'),
+    importExcelInput: document.getElementById('importExcelInput'),
     searchSection: document.getElementById('searchSection'),
     registerSection: document.getElementById('registerSection'),
     
@@ -102,6 +104,12 @@ elements.showSearchBtn.addEventListener('click', showSearchSection);
 elements.showRegisterBtn.addEventListener('click', showRegisterSection);
 if (elements.exportExcelBtn) {
     elements.exportExcelBtn.addEventListener('click', handleExportExcel);
+}
+if (elements.importExcelBtn) {
+    elements.importExcelBtn.addEventListener('click', () => elements.importExcelInput.click());
+}
+if (elements.importExcelInput) {
+    elements.importExcelInput.addEventListener('change', handleImportExcel);
 }
 elements.toggleFiltersBtn.addEventListener('click', toggleAdvancedFilters);
 elements.searchForm.addEventListener('submit', handleSearch);
@@ -2130,4 +2138,157 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editModeEnabled && elements.exportExcelBtn) {
         elements.exportExcelBtn.style.display = 'inline-flex';
     }
+    if (editModeEnabled && elements.importExcelBtn) {
+        elements.importExcelBtn.style.display = 'inline-flex';
+    }
 });
+
+
+/**
+ * Maneja la importación de Excel
+ */
+async function handleImportExcel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!_adminToken) {
+        showError('No tiene permisos para importar datos');
+        elements.importExcelInput.value = '';
+        return;
+    }
+    
+    // Validar que sea un archivo Excel
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+        showError('Por favor seleccione un archivo Excel válido (.xlsx o .xls)');
+        elements.importExcelInput.value = '';
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        // Leer el archivo Excel
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Obtener la primera hoja
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convertir a JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        
+        if (jsonData.length === 0) {
+            showError('El archivo Excel está vacío');
+            elements.importExcelInput.value = '';
+            return;
+        }
+        
+        // Mapear los datos del Excel al formato esperado por el API
+        const pacientes = jsonData.map(row => {
+            // Buscar estado_id, municipio_id, parroquia_id si existen en caché
+            let estadoID = 0;
+            let municipioID = 0;
+            let parroquiaID = 0;
+            
+            // Si hay nombres geográficos, intentar buscar los IDs
+            if (row['Estado'] && cache.estados) {
+                const estado = cache.estados.find(e => e.nombre.toLowerCase() === row['Estado'].toLowerCase());
+                if (estado) estadoID = estado.id;
+            }
+            
+            return {
+                nombre_completo: String(row['Nombre Completo'] || '').trim().toUpperCase(),
+                cedula: String(row['Cédula'] || row['Cedula'] || '').trim().toUpperCase(),
+                telefono: String(row['Teléfono'] || row['Telefono'] || '').trim(),
+                edad: parseInt(row['Edad']) || 0,
+                ubicacion_actual: String(row['Ubicación Actual'] || row['Ubicacion Actual'] || '').trim(),
+                estado_salud: String(row['Estado de Salud'] || row['Estado Salud'] || '').trim(),
+                estado_id: estadoID,
+                municipio_id: municipioID,
+                parroquia_id: parroquiaID
+            };
+        });
+        
+        // Validar que al menos tengan nombre y ubicación
+        const invalidRows = pacientes.filter(p => !p.nombre_completo || !p.ubicacion_actual || !p.estado_salud);
+        if (invalidRows.length > 0) {
+            showError(`Hay ${invalidRows.length} filas con datos incompletos (requieren: Nombre Completo, Ubicación Actual, Estado de Salud)`);
+            elements.importExcelInput.value = '';
+            return;
+        }
+        
+        // Enviar al backend
+        const response = await fetch(`${API_BASE_URL}/pacientes/import`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Token': _adminToken
+            },
+            body: JSON.stringify(pacientes)
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Token de administrador inválido');
+            }
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Error del servidor: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        // Mostrar resultados detallados
+        let mensaje = `📊 Importación completada:\n\n`;
+        mensaje += `✅ Total procesados: ${result.total}\n`;
+        mensaje += `✅ Exitosos: ${result.success}\n`;
+        
+        if (result.inserted > 0) {
+            mensaje += `➕ Nuevos registros: ${result.inserted}\n`;
+        }
+        
+        if (result.updated > 0) {
+            mensaje += `🔄 Registros actualizados: ${result.updated}\n`;
+        }
+        
+        if (result.failed > 0) {
+            mensaje += `❌ Fallidos: ${result.failed}\n`;
+        }
+        
+        // Mostrar warnings si hay
+        if (result.warnings && result.warnings.length > 0) {
+            mensaje += `\n⚠️ Advertencias:\n`;
+            result.warnings.slice(0, 5).forEach(w => mensaje += `• ${w}\n`);
+            if (result.warnings.length > 5) {
+                mensaje += `... y ${result.warnings.length - 5} más\n`;
+            }
+        }
+        
+        // Mostrar errores si hay
+        if (result.errors && result.errors.length > 0) {
+            mensaje += `\n❌ Errores:\n`;
+            result.errors.slice(0, 5).forEach(e => mensaje += `• ${e}\n`);
+            if (result.errors.length > 5) {
+                mensaje += `... y ${result.errors.length - 5} más\n`;
+            }
+        }
+        
+        if (result.success > 0) {
+            showSuccess(mensaje);
+            // Recargar datos después de 3 segundos
+            setTimeout(() => {
+                loadPacientes();
+                loadStats();
+            }, 3000);
+        } else {
+            showError(mensaje);
+        }
+        
+    } catch (error) {
+        showError(`Error procesando archivo: ${error.message}`);
+    } finally {
+        hideLoading();
+        // Limpiar el input para permitir reimportar el mismo archivo
+        elements.importExcelInput.value = '';
+    }
+}

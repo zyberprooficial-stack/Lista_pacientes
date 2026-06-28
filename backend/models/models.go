@@ -54,10 +54,13 @@ type PaginationMetadata struct {
 
 // BulkUploadResult representa el resultado de una carga masiva
 type BulkUploadResult struct {
-	Success int      `json:"success"`
-	Failed  int      `json:"failed"`
-	Total   int      `json:"total"`
-	Errors  []string `json:"errors,omitempty"`
+	Success  int      `json:"success"`
+	Failed   int      `json:"failed"`
+	Updated  int      `json:"updated"`
+	Inserted int      `json:"inserted"`
+	Total    int      `json:"total"`
+	Errors   []string `json:"errors,omitempty"`
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // ErrorResponse representa una respuesta de error

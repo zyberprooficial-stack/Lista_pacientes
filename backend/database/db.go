@@ -763,3 +763,222 @@ func GetAllPacientes(ctx context.Context) ([]models.Paciente, error) {
 
 	return pacientes, nil
 }
+
+
+// ImportPacientesWithUpsert importa pacientes con lógica UPSERT inteligente
+// - Si existe cédula en BD → actualizar ese registro
+// - Si no existe cédula pero existe nombre → actualizar ese registro
+// - Si no existe ninguno → insertar nuevo
+func ImportPacientesWithUpsert(ctx context.Context, pacientes []models.PacienteInput) (*models.BulkUploadResult, error) {
+	result := &models.BulkUploadResult{
+		Total:    len(pacientes),
+		Errors:   []string{},
+		Warnings: []string{},
+	}
+
+	// Iniciar transacción
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error iniciando transacción: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Preparar statements
+	findByCedulaStmt, err := tx.PrepareContext(ctx, `
+		SELECT id, nombre_completo FROM pacientes WHERE cedula = $1 LIMIT 1
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("error preparando statement findByCedula: %w", err)
+	}
+	defer findByCedulaStmt.Close()
+
+	findByNombreStmt, err := tx.PrepareContext(ctx, `
+		SELECT id, cedula FROM pacientes WHERE LOWER(nombre_completo) = LOWER($1) LIMIT 1
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("error preparando statement findByNombre: %w", err)
+	}
+	defer findByNombreStmt.Close()
+
+	updateStmt, err := tx.PrepareContext(ctx, `
+		UPDATE pacientes 
+		SET nombre_completo = $1, 
+			cedula = $2, 
+			telefono = $3, 
+			edad = $4, 
+			ubicacion_actual = $5, 
+			estado_salud = $6,
+			id_estado = $7,
+			id_municipio = $8,
+			id_parroquia = $9
+		WHERE id = $10
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("error preparando statement update: %w", err)
+	}
+	defer updateStmt.Close()
+
+	insertStmt, err := tx.PrepareContext(ctx, `
+		INSERT INTO pacientes (nombre_completo, cedula, telefono, edad, ubicacion_actual, estado_salud, id_estado, id_municipio, id_parroquia)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("error preparando statement insert: %w", err)
+	}
+	defer insertStmt.Close()
+
+	// Procesar cada paciente
+	for i, p := range pacientes {
+		lineNum := i + 1 // Para mensajes de error más claros
+
+		// Validar antes de procesar
+		if validationErrors := p.Validate(); len(validationErrors) > 0 {
+			result.Failed++
+			result.Errors = append(result.Errors, fmt.Sprintf("línea %d: %s", lineNum, strings.Join(validationErrors, ", ")))
+			continue
+		}
+
+		// Convertir valores vacíos a NULL
+		var cedulaValue interface{} = nil
+		if p.Cedula != "" {
+			cedulaValue = p.Cedula
+		}
+
+		var telefonoValue interface{} = nil
+		if p.Telefono != "" {
+			telefonoValue = p.Telefono
+		}
+
+		var edadValue interface{} = nil
+		if p.Edad > 0 {
+			edadValue = p.Edad
+		}
+
+		var estadoIDValue interface{} = nil
+		if p.EstadoID > 0 {
+			estadoIDValue = p.EstadoID
+		}
+
+		var municipioIDValue interface{} = nil
+		if p.MunicipioID > 0 {
+			municipioIDValue = p.MunicipioID
+		}
+
+		var parroquiaIDValue interface{} = nil
+		if p.ParroquiaID > 0 {
+			parroquiaIDValue = p.ParroquiaID
+		}
+
+		// Determinar si existe y cómo identificarlo
+		var existingID int
+		var existingNombre string
+		var existingCedula *string
+		existsBy := "" // "cedula", "nombre", o ""
+
+		// 1. Buscar por cédula (si tiene)
+		if p.Cedula != "" {
+			err := findByCedulaStmt.QueryRowContext(ctx, p.Cedula).Scan(&existingID, &existingNombre)
+			if err == nil {
+				existsBy = "cedula"
+			} else if err != sql.ErrNoRows {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("línea %d: error buscando por cédula: %v", lineNum, err))
+				continue
+			}
+		}
+
+		// 2. Si no existe por cédula, buscar por nombre
+		if existsBy == "" && p.NombreCompleto != "" {
+			err := findByNombreStmt.QueryRowContext(ctx, p.NombreCompleto).Scan(&existingID, &existingCedula)
+			if err == nil {
+				existsBy = "nombre"
+				
+				// Si el registro existente no tiene cédula pero el nuevo sí, es una mejora de datos
+				if existingCedula == nil && p.Cedula != "" {
+					result.Warnings = append(result.Warnings, fmt.Sprintf("línea %d: se agregará cédula '%s' al paciente existente '%s'", lineNum, p.Cedula, p.NombreCompleto))
+				}
+			} else if err != sql.ErrNoRows {
+				result.Failed++
+				result.Errors = append(result.Errors, fmt.Sprintf("línea %d: error buscando por nombre: %v", lineNum, err))
+				continue
+			}
+		}
+
+		// 3. UPSERT: UPDATE o INSERT
+		if existsBy != "" {
+			// ACTUALIZAR registro existente
+			_, err := updateStmt.ExecContext(ctx, 
+				p.NombreCompleto, 
+				cedulaValue, 
+				telefonoValue, 
+				edadValue, 
+				p.UbicacionActual, 
+				p.EstadoSalud,
+				estadoIDValue,
+				municipioIDValue,
+				parroquiaIDValue,
+				existingID,
+			)
+			
+			if err != nil {
+				result.Failed++
+				if strings.Contains(err.Error(), "duplicate key") {
+					if strings.Contains(err.Error(), "idx_pacientes_cedula") {
+						result.Errors = append(result.Errors, fmt.Sprintf("línea %d: la cédula %s ya existe en otro registro", lineNum, p.Cedula))
+					} else {
+						result.Errors = append(result.Errors, fmt.Sprintf("línea %d: datos duplicados: %v", lineNum, err))
+					}
+				} else {
+					result.Errors = append(result.Errors, fmt.Sprintf("línea %d: error actualizando: %v", lineNum, err))
+				}
+				continue
+			}
+			
+			result.Updated++
+			result.Success++
+			result.Warnings = append(result.Warnings, fmt.Sprintf("línea %d: registro actualizado (encontrado por %s): %s", lineNum, existsBy, p.NombreCompleto))
+			
+		} else {
+			// INSERTAR nuevo registro
+			_, err := insertStmt.ExecContext(ctx, 
+				p.NombreCompleto, 
+				cedulaValue, 
+				telefonoValue, 
+				edadValue, 
+				p.UbicacionActual, 
+				p.EstadoSalud,
+				estadoIDValue,
+				municipioIDValue,
+				parroquiaIDValue,
+			)
+			
+			if err != nil {
+				result.Failed++
+				if strings.Contains(err.Error(), "duplicate key") {
+					if strings.Contains(err.Error(), "idx_pacientes_cedula") || strings.Contains(err.Error(), "cedula_unica") {
+						result.Errors = append(result.Errors, fmt.Sprintf("línea %d: la cédula %s ya existe", lineNum, p.Cedula))
+					} else if strings.Contains(err.Error(), "uq_nombre_completo") {
+						result.Errors = append(result.Errors, fmt.Sprintf("línea %d: el nombre '%s' ya existe", lineNum, p.NombreCompleto))
+					} else {
+						result.Errors = append(result.Errors, fmt.Sprintf("línea %d: datos duplicados: %v", lineNum, err))
+					}
+				} else {
+					result.Errors = append(result.Errors, fmt.Sprintf("línea %d: error insertando: %v", lineNum, err))
+				}
+				continue
+			}
+			
+			result.Inserted++
+			result.Success++
+		}
+	}
+
+	// Commit transacción solo si hubo al menos un éxito
+	if result.Success > 0 {
+		if err := tx.Commit(); err != nil {
+			return nil, fmt.Errorf("error confirmando transacción: %w", err)
+		}
+	}
+
+	return result, nil
+}

@@ -456,3 +456,57 @@ func ExportAllPacientes(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, pacientes)
 }
+
+// ImportExcel maneja POST /api/pacientes/import para importar pacientes desde Excel (admin only)
+func ImportExcel(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondError(w, http.StatusMethodNotAllowed, "Método no permitido")
+		return
+	}
+
+	// Proteger el endpoint con token de administrador
+	if r.Header.Get("X-Admin-Token") != AdminToken {
+		respondError(w, http.StatusUnauthorized, "Token de administrador no autorizado o ausente")
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
+	// Parsear el body JSON con array de pacientes
+	var pacientes []models.PacienteInput
+	if err := json.NewDecoder(r.Body).Decode(&pacientes); err != nil {
+		respondError(w, http.StatusBadRequest, "JSON inválido")
+		return
+	}
+
+	if len(pacientes) == 0 {
+		respondError(w, http.StatusBadRequest, "El archivo Excel está vacío")
+		return
+	}
+
+	if len(pacientes) > maxRecords {
+		respondError(w, http.StatusBadRequest, "Máximo 10,000 registros permitidos")
+		return
+	}
+
+	// Context con timeout largo para importación masiva
+	ctx, cancel := context.WithTimeout(r.Context(), 120*time.Second)
+	defer cancel()
+
+	// Importar con UPSERT inteligente
+	result, err := database.ImportPacientesWithUpsert(ctx, pacientes)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Error procesando importación")
+		return
+	}
+
+	// Limitar errores y warnings mostrados
+	if len(result.Errors) > 20 {
+		result.Errors = append(result.Errors[:20], "... (más errores omitidos)")
+	}
+	if len(result.Warnings) > 20 {
+		result.Warnings = append(result.Warnings[:20], "... (más advertencias omitidas)")
+	}
+
+	respondJSON(w, http.StatusOK, result)
+}

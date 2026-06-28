@@ -42,6 +42,7 @@ func main() {
 	mux.HandleFunc("/api/pacientes/delete", handlers.DeletePaciente)
 	mux.HandleFunc("/api/pacientes/bulk", handlers.BulkUpload)
 	mux.HandleFunc("/api/pacientes/export", handlers.ExportAllPacientes)
+	mux.HandleFunc("/api/pacientes/import", handlers.ImportExcel)
 	
 	// Endpoints geográficos
 	mux.HandleFunc("/api/estados", handlers.GetEstados)
