@@ -926,22 +926,22 @@ function createMobileCard(paciente) {
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1 1 15 0Z" />
                 </svg>
                 <div class="flex flex-col min-w-0">
-                    <span class="text-sm font-semibold text-slate-900 leading-tight break-words" title="${f.ubicacion}">${f.ubicacion}</span>
+                    <span class="text-sm font-semibold text-slate-900 leading-tight break-words">${f.ubicacion}</span>
                     <span class="text-[11px] text-slate-500 mt-0.5">Ubicación específica</span>
                 </div>
             </div>
             <div class="grid grid-cols-3 gap-2 py-2.5 border-t border-slate-100 text-xs">
                 <div class="flex flex-col">
                     <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Edo.</span>
-                    <span class="font-semibold text-slate-800 break-words leading-tight" title="${f.estado}">${f.estado}</span>
+                    <span class="font-semibold text-slate-800 break-words leading-tight">${f.estado}</span>
                 </div>
                 <div class="flex flex-col">
                     <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Mun.</span>
-                    <span class="font-semibold text-slate-800 break-words leading-tight" title="${f.municipio}">${f.municipio}</span>
+                    <span class="font-semibold text-slate-800 break-words leading-tight">${f.municipio}</span>
                 </div>
                 <div class="flex flex-col">
                     <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Parroq.</span>
-                    <span class="font-semibold text-slate-800 break-words leading-tight" title="${f.parroquia}">${f.parroquia}</span>
+                    <span class="font-semibold text-slate-800 break-words leading-tight">${f.parroquia}</span>
                 </div>
             </div>
             <div class="flex items-center pt-2 border-t border-slate-100 text-[11px] text-slate-400 mt-auto">
