@@ -125,6 +125,12 @@ elements.pageSize.addEventListener('change', handlePageSizeChange);
 elements.loadMoreBtn.addEventListener('click', handleLoadMore);
 elements.resultsBody.addEventListener('click', handleResultsBodyClick);
 
+// Event listener para cards móviles
+const resultsCards = document.getElementById('resultsCards');
+if (resultsCards) {
+    resultsCards.addEventListener('click', handleResultsBodyClick);
+}
+
 // Event Listeners para dropdowns en cascada
 elements.regEstadoGeo.addEventListener('change', handleEstadoChange);
 elements.regMunicipio.addEventListener('change', handleMunicipioChange);
@@ -133,36 +139,55 @@ elements.regMunicipio.addEventListener('change', handleMunicipioChange);
 elements.searchEstadoGeo.addEventListener('change', handleSearchEstadoChange);
 elements.searchMunicipio.addEventListener('change', handleSearchMunicipioChange);
 
-// Listener de redimensionado responsivo inteligente
-let lastWasMobile = isMobileView();
-window.addEventListener('resize', debounce(() => {
-    const currentMobile = isMobileView();
-    if (currentMobile !== lastWasMobile) {
-        lastWasMobile = currentMobile;
-        if (lastPacientesResponse) {
-            renderResults(lastPacientesResponse, false);
-            updatePagination(lastPagination);
-        }
-    }
-}, 150));
-
-// Cargar datos iniciales al cargar la página
+// Cargar datos iniciales al cargar la pagina
 document.addEventListener('DOMContentLoaded', () => {
     loadPacientes();
     loadEstados();
     loadEstadosSearch();
     loadStats();
-    
-    // Configurar listeners para las pills de filtro rápido
+
+    // Placeholders segun tipo de filtro activo
+    const placeholders = {
+        all:      'Nombre, cedula, hospital o ciudad...',
+        nombre:   'Escribe el nombre completo o parcial...',
+        cedula:   'Escribe la cedula (ej: V12345678)...',
+        hospital: 'Escribe el nombre del hospital o clinica...',
+        ciudad:   'Escribe la ciudad o municipio...',
+        estado:   'Escribe el estado venezolano (ej: Zulia)...'
+    };
+
+    // Clases Tailwind para pill activa e inactiva
+    const activeClasses   = 'quick-filter-pill inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 border border-blue-600 text-blue-700 rounded-full text-sm font-semibold cursor-pointer transition-all active';
+    const inactiveClasses = 'quick-filter-pill inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-full text-sm font-medium cursor-pointer transition-all';
+
+    function applyPillStyles(activePill) {
+        document.querySelectorAll('.quick-filter-pill').forEach(p => {
+            const icon = p.querySelector('i[data-lucide="check"]');
+            if (p === activePill) {
+                p.className = activeClasses;
+                if (icon) { icon.style.opacity = '1'; icon.style.transform = 'scale(1)'; }
+            } else {
+                p.className = inactiveClasses;
+                if (icon) { icon.style.opacity = '0'; icon.style.transform = 'scale(0.5)'; }
+            }
+        });
+    }
+
+    // Registrar listeners en las pills de filtro rapido
     document.querySelectorAll('.quick-filter-pill').forEach(pill => {
         pill.addEventListener('click', (e) => {
             e.preventDefault();
-            document.querySelectorAll('.quick-filter-pill').forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-            
-            // Si hay texto, disparar búsqueda, si no, dar focus al input
+
+            // Actualizar estilos visuales
+            applyPillStyles(pill);
+
+            // Cambiar placeholder segun filtro seleccionado
+            const filterType = pill.dataset.filter;
             const queryInput = document.getElementById('unifiedSearchInput');
             if (queryInput) {
+                queryInput.placeholder = placeholders[filterType] || placeholders.all;
+
+                // Si ya hay texto, lanzar busqueda con el nuevo filtro
                 if (queryInput.value.trim() !== '') {
                     handleSearch();
                 } else {
@@ -173,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+
 /**
  * Muestra la sección de búsqueda
  */
@@ -180,15 +206,16 @@ function showSearchSection() {
     elements.searchSection.style.display = 'block';
     elements.registerSection.style.display = 'none';
     
-    // Toggle premium button styles (Primary vs Secondary)
-    elements.showSearchBtn.className = 'btn btn-primary btn-action-tab active';
-    elements.showRegisterBtn.className = 'btn btn-secondary btn-action-tab';
+    // Actualizar estilos de botones del header con Tailwind
+    if (window.updateHeaderButtons) {
+        window.updateHeaderButtons('search');
+    }
     
     // Asegurar que se muestre la sección de resultados
     document.querySelector('.results-section').style.display = 'block';
     elements.pagination.style.display = lastPagination && lastPagination.total_pages > 1 ? 'flex' : 'none';
     if (elements.resultsInfo && displayedCount > 0) {
-        elements.resultsInfo.style.display = 'block';
+        elements.resultsInfo.style.display = 'flex';
     }
     
     // Ocultar mensajes
@@ -203,9 +230,10 @@ function showRegisterSection() {
     elements.searchSection.style.display = 'none';
     elements.registerSection.style.display = 'block';
     
-    // Toggle premium button styles (Primary vs Secondary)
-    elements.showSearchBtn.className = 'btn btn-secondary btn-action-tab';
-    elements.showRegisterBtn.className = 'btn btn-primary btn-action-tab active';
+    // Actualizar estilos de botones del header con Tailwind
+    if (window.updateHeaderButtons) {
+        window.updateHeaderButtons('register');
+    }
     
     // Ocultar tabla de resultados y mensajes
     document.querySelector('.results-section').style.display = 'none';
@@ -655,25 +683,6 @@ function handleResultsBodyClick(e) {
         }
         return;
     }
-
-    handlePatientCardClick(e);
-}
-
-function handlePatientCardClick(e) {
-    const header = e.target.closest('.patient-card-header');
-    if (!header) return;
-    const card = header.closest('.patient-card');
-    if (!card) return;
-    const expanded = card.classList.toggle('expanded');
-    header.setAttribute('aria-expanded', String(expanded));
-    const toggle = header.querySelector('.patient-card-toggle');
-    if (toggle) {
-        toggle.textContent = expanded ? 'Ocultar ▲' : 'Ver detalles ▼';
-    }
-}
-
-function isMobileView() {
-    return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches;
 }
 
 /**
@@ -796,93 +805,160 @@ function createPhotoElement(paciente) {
 function createDesktopRow(paciente) {
     const f = formatPacienteFields(paciente);
     const tr = document.createElement('tr');
+    tr.className = 'group';
+    
     const tdPhoto = document.createElement('td');
     tdPhoto.dataset.label = 'Foto';
-    tdPhoto.className = 'cell-photo';
     tdPhoto.appendChild(createPhotoElement(paciente));
     tr.appendChild(tdPhoto);
+    
     tr.insertAdjacentHTML('beforeend', `
         <td data-label="Nombre">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                <span>${f.nombre}</span>
+            <div class="flex items-center justify-between gap-2">
+                <span class="font-semibold text-slate-900">${f.nombre}</span>
                 ${editModeEnabled ? `
-                <div style="display: flex; gap: 4px; align-items: center;">
-                    <button type="button" class="btn btn-secondary btn-edit-patient" data-id="${paciente.id}" title="Editar paciente" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">✏️</button>
-                    <button type="button" class="btn btn-danger btn-delete-patient" data-id="${paciente.id}" title="Eliminar paciente" style="padding: 2px 6px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; background-color: #f43f5e; border-color: #f43f5e; color: white;">🗑️</button>
+                <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button type="button" class="btn-edit-patient inline-flex items-center justify-center w-7 h-7 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md transition-colors" data-id="${paciente.id}" title="Editar">
+                        <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button type="button" class="btn-delete-patient inline-flex items-center justify-center w-7 h-7 bg-red-50 hover:bg-red-100 text-red-600 rounded-md transition-colors" data-id="${paciente.id}" title="Eliminar">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
                 </div>
                 ` : ''}
             </div>
         </td>
-        <td data-label="Cédula"><strong>${f.cedula}</strong></td>
+        <td data-label="Cédula"><strong class="text-slate-900">${f.cedula}</strong></td>
         <td data-label="Edad">${f.edad}</td>
         <td data-label="Teléfono">${f.telefono}</td>
         <td data-label="Estado">${f.estado}</td>
         <td data-label="Municipio">${f.municipio}</td>
         <td data-label="Parroquia">${f.parroquia}</td>
-        <td data-label="Ubicación">${f.ubicacion}</td>
+        <td data-label="Ubicación"><span class="text-sm">${f.ubicacion}</span></td>
         <td data-label="Estado de Salud"><span class="${f.estadoClass}">${f.estadoSalud}</span></td>
-        <td data-label="Fecha" class="cell-fecha">${f.fechaFormateada}</td>
+        <td data-label="Fecha"><span class="text-xs text-slate-500">${f.fechaFormateada}</span></td>
     `);
     return tr;
 }
 
-function createMobileCardRow(paciente) {
+function createMobileCard(paciente) {
     const f = formatPacienteFields(paciente);
-    const tr = document.createElement('tr');
-    tr.className = 'patient-card';
-    tr.innerHTML = `
-        <td colspan="11" class="patient-card-cell">
-            <button type="button" class="patient-card-header" aria-expanded="false">
-                <div class="patient-card-photo-section">
-                    <div class="patient-card-photo-slot"></div>
-                    <div class="patient-card-info">
-                        <div class="patient-card-top">
-                            <span class="patient-card-name">${f.nombre}</span>
-                            <span class="${f.estadoClass}">${f.estadoSalud}</span>
-                        </div>
-                        <div class="patient-card-summary">
-                            <span class="summary-item"><strong>Cédula:</strong> ${f.cedula}</span>
-                            <span class="summary-item"><strong>Ubicación:</strong> ${f.ubicacion}</span>
-                        </div>
-                    </div>
-                </div>
-                <span class="patient-card-toggle">Ver detalles</span>
-            </button>
-            <div class="patient-card-details">
-                <div class="detail-row"><span>Edad</span><span>${f.edad}</span></div>
-                <div class="detail-row"><span>Teléfono</span><span>${f.telefono}</span></div>
-                <div class="detail-row"><span>Estado</span><span>${f.estado}</span></div>
-                <div class="detail-row"><span>Municipio</span><span>${f.municipio}</span></div>
-                <div class="detail-row"><span>Parroquia</span><span>${f.parroquia}</span></div>
-                <div class="detail-row"><span>Fecha registro</span><span>${f.fechaFormateada}</span></div>
-                ${editModeEnabled ? `
-                <div class="detail-row" style="margin-top: 12px; justify-content: flex-end; border-top: 1px dashed var(--border-color); padding-top: 12px; gap: 8px;">
-                    <button type="button" class="btn btn-secondary btn-edit-patient" data-id="${paciente.id}" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                        <span>✏️ Editar</span>
-                    </button>
-                    <button type="button" class="btn btn-danger btn-delete-patient" data-id="${paciente.id}" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; background-color: #f43f5e; border-color: #f43f5e; color: white;">
-                        <span>🗑️ Eliminar</span>
-                    </button>
-                </div>` : ''}
-            </div>
-        </td>
-    `;
-    const photoSlot = tr.querySelector('.patient-card-photo-slot');
-    if (photoSlot) {
-        photoSlot.replaceWith(createPhotoElement(paciente));
+    const card = document.createElement('div');
+    card.className = 'group relative flex flex-col bg-white border border-slate-200/80 rounded-2xl overflow-hidden hover:shadow-xl hover:border-slate-300/80 transition-all duration-300';
+    card.dataset.pacienteId = paciente.id;
+
+    const getInitials = (nombre) => {
+        if (!nombre) return 'PA';
+        const parts = nombre.trim().split(/\s+/);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return parts[0].substring(0, 2).toUpperCase();
+    };
+    const initials = getInitials(paciente.nombre_completo);
+
+    let badgeHTML = '';
+    const estadoLower = paciente.estado_salud.toLowerCase();
+    if (estadoLower === 'estable') {
+        badgeHTML = `<span class="inline-flex items-center rounded-full bg-emerald-500 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-white/70 mr-1.5"></span>Estable</span>`;
+    } else if (estadoLower === 'critico' || estadoLower === 'critico') {
+        badgeHTML = `<span class="inline-flex items-center rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-white/70 mr-1.5 animate-pulse"></span>Critico</span>`;
+    } else if (estadoLower === 'fallecido') {
+        badgeHTML = `<span class="inline-flex items-center rounded-full bg-zinc-600 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-white/70 mr-1.5"></span>Fallecido</span>`;
+    } else {
+        badgeHTML = `<span class="inline-flex items-center rounded-full bg-slate-500 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-white/70 mr-1.5"></span>Desconocido</span>`;
     }
-    return tr;
+
+    let topSectionHTML = '';
+    if (paciente.foto) {
+        topSectionHTML = `
+            <div class="relative w-full" style="height:200px;flex-shrink:0;">
+                <img src="${paciente.foto}"
+                     alt="Foto de ${f.nombre}"
+                     class="w-full h-full patient-photo-thumb"
+                     data-paciente-id="${paciente.id}"
+                     style="display:block;object-fit:cover;width:100%;height:100%;cursor:pointer;">
+                <div class="absolute top-3 left-3">${badgeHTML}</div>
+                <div class="absolute bottom-0 left-0 right-0 h-20 pointer-events-none" style="background:linear-gradient(to top,rgba(0,0,0,0.65),transparent);"></div>
+                <div class="absolute bottom-3 left-3 right-3">
+                    <h3 class="font-bold text-white text-base leading-tight" style="text-shadow:0 1px 3px rgba(0,0,0,0.5);" title="${f.nombre}">${f.nombre}</h3>
+                </div>
+                ${editModeEnabled ? `<div class="absolute top-3 right-3 flex gap-1.5">
+                    <button type="button" class="btn-edit-patient inline-flex items-center justify-center w-8 h-8 bg-white/90 hover:bg-white text-blue-600 rounded-lg shadow" data-id="${paciente.id}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                    <button type="button" class="btn-delete-patient inline-flex items-center justify-center w-8 h-8 bg-white/90 hover:bg-white text-red-600 rounded-lg shadow" data-id="${paciente.id}" title="Eliminar"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>` : ''}
+            </div>`;
+    } else {
+        topSectionHTML = `
+            <div class="flex items-center gap-3 p-5 pb-0">
+                <div class="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-sm" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);">
+                    ${initials}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-bold text-slate-900 text-base leading-tight truncate group-hover:text-blue-600 transition-colors" title="${f.nombre}">${f.nombre}</h3>
+                    <div class="mt-1">${badgeHTML}</div>
+                </div>
+                ${editModeEnabled ? `<div class="flex gap-1.5 flex-shrink-0">
+                    <button type="button" class="btn-edit-patient inline-flex items-center justify-center w-8 h-8 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg border border-blue-100" data-id="${paciente.id}" title="Editar"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                    <button type="button" class="btn-delete-patient inline-flex items-center justify-center w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg border border-red-100" data-id="${paciente.id}" title="Eliminar"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>` : ''}
+            </div>`;
+    }
+
+    card.innerHTML = `
+        ${topSectionHTML}
+        <div class="p-5 ${paciente.foto ? '' : 'pt-3'} flex flex-col gap-3 flex-1">
+            <div class="grid grid-cols-3 gap-2 py-3 border-y border-slate-100 text-xs">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Cedula</span>
+                    <span class="font-semibold text-slate-800 truncate">${f.cedula}</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Edad</span>
+                    <span class="font-semibold text-slate-800">${f.edad}</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Telefono</span>
+                    <span class="font-semibold text-slate-800 truncate">${f.telefono}</span>
+                </div>
+            </div>
+            <div class="flex items-start gap-2">
+                <svg class="w-4 h-4 mt-0.5 flex-shrink-0" style="color:#f43f5e;" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1 1 15 0Z" />
+                </svg>
+                <div class="flex flex-col min-w-0">
+                    <span class="text-sm font-semibold text-slate-900 leading-tight break-words" title="${f.ubicacion}">${f.ubicacion}</span>
+                    <span class="text-[11px] text-slate-500 mt-0.5">Ubicación específica</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 py-2.5 border-t border-slate-100 text-xs">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Edo.</span>
+                    <span class="font-semibold text-slate-800 break-words leading-tight" title="${f.estado}">${f.estado}</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Mun.</span>
+                    <span class="font-semibold text-slate-800 break-words leading-tight" title="${f.municipio}">${f.municipio}</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Parroq.</span>
+                    <span class="font-semibold text-slate-800 break-words leading-tight" title="${f.parroquia}">${f.parroquia}</span>
+                </div>
+            </div>
+            <div class="flex items-center pt-2 border-t border-slate-100 text-[11px] text-slate-400 mt-auto">
+                <span>Act: ${f.fechaFormateada}</span>
+            </div>
+        </div>
+    `;
+
+    if (paciente.foto) {
+        pacienteFotos.set(paciente.id, { foto: paciente.foto, nombre: paciente.nombre_completo });
+    }
+    return card;
 }
 
-function createPatientRow(paciente) {
-    return isMobileView() ? createMobileCardRow(paciente) : createDesktopRow(paciente);
-}
-
-/**
- * Renderiza los resultados en la tabla
- */
 function renderResults(data, append = false) {
     const tbody = elements.resultsBody;
+    const cardsContainer = document.getElementById('resultsCards');
     
     if (!data.data || data.data.length === 0) {
         if (!append) {
@@ -894,17 +970,21 @@ function renderResults(data, append = false) {
     
     if (!append) {
         tbody.innerHTML = '';
+        if (cardsContainer) cardsContainer.innerHTML = '';
         pacienteFotos.clear();
     }
     
     displayedCount += data.data.length;
     updateResultsInfo(data.pagination, displayedCount, append);
     
-    const fragment = document.createDocumentFragment();
-    data.data.forEach((paciente) => {
-        fragment.appendChild(createPatientRow(paciente));
-    });
-    tbody.appendChild(fragment);
+    // Renderizar para Móvil y Desktop de manera unificada
+    if (cardsContainer) {
+        const cardsFragment = document.createDocumentFragment();
+        data.data.forEach((paciente) => {
+            cardsFragment.appendChild(createMobileCard(paciente));
+        });
+        cardsContainer.appendChild(cardsFragment);
+    }
     
     // Re-inicializar iconos de Lucide dinámicos
     if (window.lucide) {
@@ -918,10 +998,32 @@ function renderResults(data, append = false) {
 function renderNoResults(message) {
     elements.resultsBody.innerHTML = `
         <tr>
-            <td colspan="11" class="no-results">${escapeHtml(message)}</td>
+            <td colspan="11" class="text-center text-slate-400 py-16">
+                <div class="flex flex-col items-center gap-3">
+                    <i data-lucide="search-x" class="w-12 h-12 text-slate-300"></i>
+                    <p class="text-sm font-medium">${escapeHtml(message)}</p>
+                </div>
+            </td>
         </tr>
     `;
+    
+    const cardsContainer = document.getElementById('resultsCards');
+    if (cardsContainer) {
+        cardsContainer.innerHTML = `
+            <div class="p-6 text-center text-slate-400">
+                <div class="flex flex-col items-center gap-3">
+                    <i data-lucide="search-x" class="w-12 h-12 text-slate-300"></i>
+                    <p class="text-sm font-medium">${escapeHtml(message)}</p>
+                </div>
+            </div>
+        `;
+    }
+    
     elements.pagination.style.display = 'none';
+    
+    if (window.lucide) {
+        lucide.createIcons();
+    }
 }
 
 function updateResultsInfo(pagination, shown, append = false) {
@@ -993,16 +1095,9 @@ function updatePagination(pagination) {
     elements.nextBtn.disabled = pagination.page >= pagination.total_pages;
 
     const hasMore = pagination.page < pagination.total_pages;
-    const mobile = isMobileView();
-
-    elements.pagination.classList.toggle('pagination-mobile', mobile);
-    elements.loadMoreBtn.style.display = mobile && hasMore ? 'block' : 'none';
-    elements.loadMoreBtn.disabled = !hasMore;
-
-    if (mobile && hasMore) {
-        const remaining = pagination.total - displayedCount;
-        elements.loadMoreBtn.textContent = `↓ Cargar más (${Math.min(currentLimit, remaining)} de ${remaining.toLocaleString('es-VE')} restantes)`;
-    }
+    
+    // No se usa el botón "Cargar más" ya que tenemos paginación normal
+    elements.loadMoreBtn.style.display = 'none';
 }
 
 /**
